@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kollect Vault — Mystery Graded Packs</title>
+  <meta name="description" content="Open £25 mystery packs of PSA/CGC Grade 9 or 10 Pokemon cards. Instant reveal, cash buyback or consign with Kollect." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="#" class="logo" data-page="home">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="url(#g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="g" x1="2" y1="2" x2="22" y2="22"><stop stop-color="#8b5cf6"/><stop offset="1" stop-color="#c084fc"/></linearGradient></defs></svg>
+        Kollect <span>Vault</span>
+      </a>
+      <button class="menu-toggle" id="menuToggle" aria-label="Menu">☰</button>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#" data-page="home" class="active">Home</a></li>
+        <li><a href="#" data-page="buy">Buy Pack</a></li>
+        <li><a href="#" data-page="pulls">Recent Pulls</a></li>
+        <li><a href="#" data-page="collection" id="navCollection" class="hidden">My Collection</a></li>
+        <li><a href="#" data-page="admin" id="navAdmin" class="hidden">Admin</a></li>
+        <li id="navAuth">
+          <button class="btn btn-primary btn-sm" data-page="auth">Sign In</button>
+        </li>
+        <li id="navUser" class="hidden">
+          <span class="text-secondary" id="userEmail" style="font-size:0.85rem;margin-right:8px"></span>
+          <button class="btn btn-secondary btn-sm" id="btnLogout">Log Out</button>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ========== HOME PAGE ========== -->
+  <section id="page-home" class="page active">
+    <div class="container">
+      <div class="hero">
+        <h1>Mystery Graded Packs</h1>
+        <p>Every pack contains a verified Grade 9 or Grade 10 Pokemon card. Pay £25, open instantly, and choose cash buyback or consign with Kollect.</p>
+        <button class="btn btn-primary btn-lg" data-page="buy">Open a Pack — £25</button>
+      </div>
+
+      <div class="grid-3 mt-3">
+        <div class="card">
+          <h3 style="margin-bottom:8px">🎲 Instant Reveal</h3>
+          <p class="text-secondary">Watch the animated reveal, then see your exact graded card pulled from live inventory.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:8px">💰 Locked Buyback</h3>
+          <p class="text-secondary">Cash offer locked at the moment you open. Never decreases. Instant alternative to keeping the card.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:8px">📦 Consign with Kollect</h3>
+          <p class="text-secondary">Prefer to sell? One click transfers the card into Kollect’s consignment pipeline.</p>
+        </div>
+      </div>
+
+      <div class="section-header mt-3">
+        <h2>How it works</h2>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <ol style="padding-left:20px;color:var(--text-secondary);line-height:1.9">
+            <li>Sign in (or create an account)</li>
+            <li>Purchase a £25 Mystery Pack</li>
+            <li>Watch the grade reveal animation</li>
+            <li>See the actual card from our stock</li>
+            <li>Keep it, take the locked cash buyback, or consign</li>
+          </ol>
+        </div>
+        <div class="odds-box">
+          <h4>Pack Contents</h4>
+          <p class="text-secondary mb-2">Every pack contains one graded card (PSA / CGC / BGS) in Grade 9 or Grade 10. Cards are valued between £20–£100+ market at time of listing. Odds are driven purely by current active inventory — no artificial weighting.</p>
+          <div class="odds-bar" id="homeOddsBar">
+            <div class="grade-10-bar" style="width:40%"></div>
+            <div class="grade-9-bar" style="width:60%"></div>
+          </div>
+          <div class="flex justify-between" style="font-size:0.85rem">
+            <span><span class="badge badge-grade-10">Grade 10</span> <span id="homeG10Pct">—</span></span>
+            <span><span class="badge badge-grade-9">Grade 9</span> <span id="homeG9Pct">—</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== BUY / PACK PAGE ========== -->
+  <section id="page-buy" class="page">
+    <div class="container">
+      <div class="section-header">
+        <h2>Buy a Mystery Pack</h2>
+      </div>
+
+      <div class="grid-2" style="align-items:start">
+        <div class="pack-card">
+          <div class="badge badge-grade-10" style="margin-bottom:12px">Grade 9 or 10 Guaranteed</div>
+          <h3>Kollect Vault Pack</h3>
+          <div class="pack-price">£25 <small>/ pack</small></div>
+          <ul class="pack-features">
+            <li>One graded Pokemon card (PSA / CGC / BGS)</li>
+            <li>Grade 9 or Grade 10 only</li>
+            <li>Market value typically £20 – £100+</li>
+            <li>Instant digital reveal + ownership</li>
+            <li>Locked cash buyback at open</li>
+            <li>Or consign via Kollect in one click</li>
+          </ul>
+          <button class="btn btn-primary btn-lg w-full" id="btnBuyPack">Purchase for £25</button>
+          <p class="text-muted mt-2" style="font-size:0.8rem">Payment processed securely. Stock is reserved only after successful payment.</p>
+        </div>
+
+        <div>
+          <div class="card mb-2">
+            <h4 style="margin-bottom:12px">Live Inventory Odds</h4>
+            <p class="text-secondary" style="font-size:0.9rem;margin-bottom:16px">Odds update in real time based on cards currently available in the vault.</p>
+            <div id="buyOddsContent">
+              <div class="spinner"></div>
+            </div>
+          </div>
+          <div class="card">
+            <h4 style="margin-bottom:8px">Fair Play Promise</h4>
+            <p class="text-secondary" style="font-size:0.9rem">Cards are drawn randomly from active inventory. We never weight packs toward lower grades. Your buyback price is locked the second the pack opens and cannot decrease.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== RECENT PULLS ========== -->
+  <section id="page-pulls" class="page">
+    <div class="container">
+      <div class="section-header">
+        <h2>Recent Pulls</h2>
+        <p class="text-secondary">Public feed of every pack opened. User data is hidden.</p>
+      </div>
+      <div id="pullsFeed" class="pulls-feed">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== MY COLLECTION ========== -->
+  <section id="page-collection" class="page">
+    <div class="container">
+      <div class="section-header">
+        <h2>My Collection</h2>
+        <p class="text-secondary">Cards you’ve pulled. Sell now or take the locked cash offer.</p>
+      </div>
+      <div id="collectionGrid" class="grid-3">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== AUTH ========== -->
+  <section id="page-auth" class="page">
+    <div class="container">
+      <div class="auth-box card">
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-tab="login">Sign In</button>
+          <button class="auth-tab" data-tab="register">Create Account</button>
+        </div>
+
+        <form id="formLogin">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" class="form-control" id="loginEmail" required placeholder="you@email.com" />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" class="form-control" id="loginPassword" required placeholder="••••••••" minlength="6" />
+          </div>
+          <button type="submit" class="btn btn-primary w-full">Sign In</button>
+        </form>
+
+        <form id="formRegister" class="hidden">
+          <div class="form-group">
+            <label>Display Name</label>
+            <input type="text" class="form-control" id="regName" required placeholder="Collector name" />
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" class="form-control" id="regEmail" required placeholder="you@email.com" />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" class="form-control" id="regPassword" required placeholder="Min 6 characters" minlength="6" />
+          </div>
+          <button type="submit" class="btn btn-primary w-full">Create Account</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== ADMIN ========== -->
+  <section id="page-admin" class="page">
+    <div class="container">
+      <div class="section-header">
+        <h2>Admin — Inventory & Analytics</h2>
+      </div>
+
+      <div class="stat-grid" id="adminStats">
+        <div class="stat-card"><div class="stat-value" id="statActive">—</div><div class="stat-label">Active Stock</div></div>
+        <div class="stat-card"><div class="stat-value" id="statPulled">—</div><div class="stat-label">Total Pulls</div></div>
+        <div class="stat-card"><div class="stat-value" id="statRevenue">—</div><div class="stat-label">Gross Revenue</div></div>
+        <div class="stat-card"><div class="stat-value" id="statMargin">—</div><div class="stat-label">Est. Margin</div></div>
+      </div>
+
+      <!-- Upload Form -->
+      <div class="card mb-3">
+        <h3 style="margin-bottom:20px">Upload New Card to Vault</h3>
+        <form id="formUploadCard">
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Card Name *</label>
+              <input type="text" class="form-control" id="cardName" required placeholder="e.g. Charizard VMAX" />
+            </div>
+            <div class="form-group">
+              <label>Set / Number</label>
+              <input type="text" class="form-control" id="cardSet" placeholder="e.g. Darkness Ablaze 020/189" />
+            </div>
+            <div class="form-group">
+              <label>Grade *</label>
+              <select class="form-control" id="cardGrade" required>
+                <option value="10">Grade 10</option>
+                <option value="9">Grade 9</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Grading Company *</label>
+              <select class="form-control" id="cardGrader" required>
+                <option value="PSA">PSA</option>
+                <option value="CGC">CGC</option>
+                <option value="BGS">BGS</option>
+                <option value="SGC">SGC</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Cert / Slab Number</label>
+              <input type="text" class="form-control" id="cardCert" placeholder="Optional cert #" />
+            </div>
+            <div class="form-group">
+              <label>Your Cost (£) *</label>
+              <input type="number" class="form-control" id="cardCost" required step="0.01" min="0" value="16" />
+            </div>
+            <div class="form-group">
+              <label>Market Value (£) *</label>
+              <input type="number" class="form-control" id="cardMarket" required step="0.01" min="0" placeholder="Current market £" />
+            </div>
+            <div class="form-group">
+              <label>TCGPlayer / Search ID (for live price)</label>
+              <input type="text" class="form-control" id="cardTcgId" placeholder="Optional — for price refresh" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Card Image *</label>
+            <div class="flex gap-2 items-center">
+              <button type="button" class="btn btn-secondary" id="btnCloudinary">Upload via Cloudinary</button>
+              <span class="text-muted" id="uploadStatus">No image selected</span>
+            </div>
+            <img id="cardImgPreview" class="img-preview hidden" alt="Preview" />
+            <input type="hidden" id="cardImageUrl" required />
+          </div>
+
+          <button type="submit" class="btn btn-primary">Add to Inventory</button>
+        </form>
+      </div>
+
+      <!-- Inventory Table -->
+      <div class="section-header">
+        <h3>Current Inventory</h3>
+        <div class="flex gap-2">
+          <select class="form-control" id="filterStatus" style="width:auto">
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="pulled">Pulled</option>
+            <option value="buyback">Buyback</option>
+            <option value="consigned">Consigned</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>Card</th>
+              <th>Grade</th>
+              <th>Cost</th>
+              <th>Market</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inventoryTable">
+            <tr><td colspan="7"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== REVEAL OVERLAY ========== -->
+  <div class="overlay" id="revealOverlay">
+    <div class="reveal-container">
+      <div id="revealStage">
+        <div id="revealAnim" class="hidden">
+          <div style="font-size:4rem;margin-bottom:16px;animation:spin 1.5s linear infinite">🎴</div>
+          <h2 id="revealGradeText" style="font-size:2rem;margin-bottom:8px">Opening pack...</h2>
+          <p class="text-secondary">Determining your grade...</p>
+        </div>
+        <div id="revealResult" class="reveal-card hidden">
+          <img id="revealImg" src="" alt="Pulled card" />
+          <div id="revealBadge" class="badge" style="margin-bottom:12px"></div>
+          <h2 id="revealName"></h2>
+          <p class="text-secondary" id="revealMeta"></p>
+          <p class="mt-2">Locked Buyback: <span class="buyback-price" id="revealBuyback"></span></p>
+          <div class="flex gap-2 mt-3"
