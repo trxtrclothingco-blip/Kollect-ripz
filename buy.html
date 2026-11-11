@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buy Pack — Kollect Vault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">Kollect <span>Vault</span></a>
+      <button class="burger" id="burger" aria-label="Menu">☰</button>
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="buy.html" class="active">Buy Pack</a></li>
+        <li><a href="pulls.html">Recent Pulls</a></li>
+        <li><a href="collection.html">My Collection</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container page-content">
+    <h1 class="page-title">Buy a Mystery Pack</h1>
+    <p class="page-sub">One graded Grade 9 or Grade 10 Pokemon card. Instant reveal.</p>
+
+    <div class="grid-2" style="align-items:start">
+      <div class="pack-card">
+        <span class="badge badge-10" style="margin-bottom:12px">Grade 9 or 10 Guaranteed</span>
+        <h2>Kollect Vault Pack</h2>
+        <div class="pack-price">£25 <small>/ pack</small></div>
+        <ul class="pack-features">
+          <li>One graded Pokemon card (PSA / CGC / BGS)</li>
+          <li>Grade 9 or Grade 10 only</li>
+          <li>Market value typically £20 – £100+</li>
+          <li>Instant digital reveal + ownership</li>
+          <li>Locked cash buyback at open</li>
+          <li>Or consign via Kollect in one click</li>
+        </ul>
+        <button class="btn btn-primary btn-lg w-full" id="btnBuy">Purchase for £25</button>
+        <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
+      </div>
+
+      <div>
+        <div class="card mb-2">
+          <h3 style="margin-bottom:12px">What’s inside</h3>
+          <p class="text-muted" style="font-size:0.95rem">
+            Every pack contains one verified graded card drawn at random from live inventory.
+            Odds are based purely on what is currently in the vault — no artificial weighting.
+          </p>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:12px">Fair Play Promise</h3>
+          <p class="text-muted" style="font-size:0.95rem">
+            Your buyback price is locked the second the pack opens and cannot decrease.
+            Cards are never weighted toward lower grades.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">Kollect Vault &copy; 2026</div>
+  </footer>
+
+  <script src="js/nav.js"></script>
+  <script>
+    document.getElementById('btnBuy').addEventListener('click', function () {
+      alert('Payment + Firebase pull logic goes here.\n\nFor now this is a placeholder. Connect Stripe + Firestore next.');
+    });
+  </script>
+</body>
+</html>
