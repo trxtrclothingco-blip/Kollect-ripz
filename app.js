@@ -1,0 +1,735 @@
+/**
+ * Kollect Vault — Main Application Logic
+ * Firebase Auth + Firestore + Cloudinary
+ */
+
+(function () {
+  'use strict';
+
+  const { auth, db, CLOUDINARY, BUYBACK_PERCENT, PACK_PRICE, ADMIN_UIDS } = window.KollectConfig;
+
+  // ---------- State ----------
+  let currentUser = null;
+  let isAdmin = false;
+  let activeInventory = [];
+  let lastPulledCard = null;
+
+  // ---------- DOM Helpers ----------
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
+  function showToast(msg, type = 'info') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    $('#toastContainer').appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  function showLoading(show) {
+    $('#loadingOverlay').classList.toggle('active', !!show);
+  }
+
+  function navigate(page) {
+    $$('.page').forEach(p => p.classList.remove('active'));
+    const target = $(`#page-${page}`);
+    if (target) target.classList.add('active');
+
+    $$('.nav-links a').forEach(a => {
+      a.classList.toggle('active', a.dataset.page === page);
+    });
+
+    $('#navLinks').classList.remove('open');
+
+    if (page === 'buy') loadBuyOdds();
+    if (page === 'pulls') loadRecentPulls();
+    if (page === 'collection') loadCollection();
+    if (page === 'admin') {
+      if (!isAdmin) {
+        showToast('Admin access required', 'error');
+        navigate('home');
+        return;
+      }
+      loadAdmin();
+    }
+    if (page === 'home') loadHomeOdds();
+  }
+
+  // ---------- Auth UI ----------
+  function updateAuthUI(user) {
+    currentUser = user;
+    isAdmin = false;
+
+    if (user) {
+      $('#navAuth').classList.add('hidden');
+      $('#navUser').classList.remove('hidden');
+      $('#navCollection').classList.remove('hidden');
+      $('#userEmail').textContent = user.email;
+
+      const uid = user.uid;
+      if (ADMIN_UIDS.includes(uid)) {
+        isAdmin = true;
+        $('#navAdmin').classList.remove('hidden');
+      } else {
+        db.collection('users').doc(uid).get().then(snap => {
+          if (snap.exists && snap.data().role === 'admin') {
+            isAdmin = true;
+            $('#navAdmin').classList.remove('hidden');
+          }
+        });
+      }
+    } else {
+      $('#navAuth').classList.remove('hidden');
+      $('#navUser').classList.add('hidden');
+      $('#navCollection').classList.add('hidden');
+      $('#navAdmin').classList.add('hidden');
+    }
+  }
+
+  // ---------- Auth Forms ----------
+  $('#formLogin').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    showLoading(true);
+    try {
+      await auth.signInWithEmailAndPassword(
+        $('#loginEmail').value.trim(),
+        $('#loginPassword').value
+      );
+      showToast('Welcome back!', 'success');
+      navigate('home');
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      showLoading(false);
+    }
+  });
+
+  $('#formRegister').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    showLoading(true);
+    try {
+      const cred = await auth.createUserWithEmailAndPassword(
+        $('#regEmail').value.trim(),
+        $('#regPassword').value
+      );
+      await cred.user.updateProfile({ displayName: $('#regName').value.trim() });
+      await db.collection('users').doc(cred.user.uid).set({
+        email: cred.user.email,
+        displayName: $('#regName').value.trim(),
+        role: 'customer',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      showToast('Account created!', 'success');
+      navigate('home');
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      showLoading(false);
+    }
+  });
+
+  $('#btnLogout').addEventListener('click', () => auth.signOut());
+
+  $$('.auth-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      $$('.auth-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const isLogin = tab.dataset.tab === 'login';
+      $('#formLogin').classList.toggle('hidden', !isLogin);
+      $('#formRegister').classList.toggle('hidden', isLogin);
+    });
+  });
+
+  // ---------- Navigation ----------
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('[data-page]');
+    if (link) {
+      e.preventDefault();
+      const page = link.dataset.page;
+      if ((page === 'collection' || page === 'buy') && !currentUser) {
+        showToast('Please sign in first', 'info');
+        navigate('auth');
+        return;
+      }
+      navigate(page);
+    }
+  });
+
+  $('#menuToggle').addEventListener('click', () => {
+    $('#navLinks').classList.toggle('open');
+  });
+
+  // ---------- Inventory Helpers ----------
+  async function getActiveCards() {
+    const snap = await db.collection('inventory')
+      .where('status', '==', 'active')
+      .get();
+    activeInventory = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return activeInventory;
+  }
+
+  function calcOdds(cards) {
+    if (!cards.length) return { g10: 0, g9: 0, total: 0 };
+    const g10 = cards.filter(c => Number(c.grade) === 10).length;
+    const g9 = cards.filter(c => Number(c.grade) === 9).length;
+    const total = cards.length;
+    return {
+      g10,
+      g9,
+      total,
+      g10Pct: Math.round((g10 / total) * 100),
+      g9Pct: Math.round((g9 / total) * 100)
+    };
+  }
+
+  async function loadHomeOdds() {
+    try {
+      const cards = await getActiveCards();
+      const odds = calcOdds(cards);
+      if (odds.total === 0) {
+        $('#homeG10Pct').textContent = 'No stock';
+        $('#homeG9Pct').textContent = '';
+        return;
+      }
+      $('#homeOddsBar .grade-10-bar').style.width = odds.g10Pct + '%';
+      $('#homeOddsBar .grade-9-bar').style.width = odds.g9Pct + '%';
+      $('#homeG10Pct').textContent = `${odds.g10Pct}% (${odds.g10})`;
+      $('#homeG9Pct').textContent = `${odds.g9Pct}% (${odds.g9})`;
+    } catch (e) {
+      console.warn('Odds load failed', e);
+    }
+  }
+
+  async function loadBuyOdds() {
+    const el = $('#buyOddsContent');
+    try {
+      const cards = await getActiveCards();
+      const odds = calcOdds(cards);
+      if (odds.total === 0) {
+        el.innerHTML = `<p class="text-warning">No active cards in the vault right now. Check back soon.</p>`;
+        $('#btnBuyPack').disabled = true;
+        return;
+      }
+      $('#btnBuyPack').disabled = false;
+      el.innerHTML = `
+        <div class="odds-bar mb-2">
+          <div class="grade-10-bar" style="width:${odds.g10Pct}%"></div>
+          <div class="grade-9-bar" style="width:${odds.g9Pct}%"></div>
+        </div>
+        <div class="flex justify-between mb-2" style="font-size:0.9rem">
+          <span><span class="badge badge-grade-10">Grade 10</span> ${odds.g10Pct}% · ${odds.g10} cards</span>
+          <span><span class="badge badge-grade-9">Grade 9</span> ${odds.g9Pct}% · ${odds.g9} cards</span>
+        </div>
+        <p class="text-muted" style="font-size:0.85rem">${odds.total} cards currently available in the vault.</p>
+      `;
+    } catch (e) {
+      el.innerHTML = `<p class="text-danger">Could not load inventory.</p>`;
+    }
+  }
+
+  // ---------- Purchase Flow ----------
+  $('#btnBuyPack').addEventListener('click', async () => {
+    if (!currentUser) {
+      showToast('Please sign in to buy a pack', 'info');
+      navigate('auth');
+      return;
+    }
+
+    const confirmed = confirm(`Confirm purchase of 1 Kollect Vault Pack for £${PACK_PRICE}?`);
+    if (!confirmed) return;
+
+    showLoading(true);
+    try {
+      const cards = await getActiveCards();
+      if (!cards.length) {
+        showToast('Sorry, the vault is empty right now.', 'error');
+        return;
+      }
+
+      const pick = cards[Math.floor(Math.random() * cards.length)];
+      const marketAtOpen = Number(pick.marketValue) || 0;
+      const buybackLocked = Math.round(marketAtOpen * BUYBACK_PERCENT * 100) / 100;
+
+      const cardRef = db.collection('inventory').doc(pick.id);
+      const result = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(cardRef);
+        if (!snap.exists || snap.data().status !== 'active') {
+          throw new Error('Card already taken — please try again');
+        }
+        tx.update(cardRef, {
+          status: 'pulled',
+          pulledBy: currentUser.uid,
+          pulledAt: firebase.firestore.FieldValue.serverTimestamp(),
+          marketAtOpen,
+          buybackLocked
+        });
+        return { ...snap.data(), id: snap.id, marketAtOpen, buybackLocked };
+      });
+
+      await db.collection('pulls').add({
+        cardId: result.id,
+        name: result.name,
+        set: result.set || '',
+        grade: result.grade,
+        grader: result.grader,
+        imageUrl: result.imageUrl,
+        marketAtOpen,
+        buybackLocked,
+        pulledAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      await db.collection('sales').add({
+        userId: currentUser.uid,
+        cardId: result.id,
+        packPrice: PACK_PRICE,
+        cost: result.cost || 16,
+        marketAtOpen,
+        buybackLocked,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      await db.collection('users').doc(currentUser.uid)
+        .collection('collection').doc(result.id).set({
+          cardId: result.id,
+          name: result.name,
+          set: result.set || '',
+          grade: result.grade,
+          grader: result.grader,
+          cert: result.cert || '',
+          imageUrl: result.imageUrl,
+          marketAtOpen,
+          buybackLocked,
+          status: 'owned',
+          pulledAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+      lastPulledCard = result;
+      showLoading(false);
+      startReveal(result);
+    } catch (err) {
+      console.error(err);
+      showToast(err.message || 'Purchase failed', 'error');
+      showLoading(false);
+    }
+  });
+
+  // ---------- Reveal Animation ----------
+  function startReveal(card) {
+    const overlay = $('#revealOverlay');
+    const anim = $('#revealAnim');
+    const result = $('#revealResult');
+
+    overlay.classList.add('active');
+    anim.classList.remove('hidden');
+    result.classList.add('hidden');
+
+    const gradeText = $('#revealGradeText');
+    gradeText.textContent = 'Opening pack...';
+
+    setTimeout(() => {
+      gradeText.textContent = 'Determining grade...';
+    }, 800);
+
+    setTimeout(() => {
+      gradeText.innerHTML = `It's a <span class="badge badge-grade-${card.grade}">Grade ${card.grade}</span>!`;
+    }, 1800);
+
+    setTimeout(() => {
+      anim.classList.add('hidden');
+      result.classList.remove('hidden');
+
+      $('#revealImg').src = card.imageUrl;
+      $('#revealName').textContent = card.name;
+      $('#revealMeta').textContent = `${card.grader} ${card.grade} · ${card.set || 'Unknown set'}`;
+      $('#revealBadge').className = `badge badge-grade-${card.grade}`;
+      $('#revealBadge').textContent = `${card.grader} ${card.grade}`;
+      $('#revealBuyback').textContent = `£${Number(card.buybackLocked).toFixed(2)}`;
+    }, 2800);
+  }
+
+  $('#btnKeepCard').addEventListener('click', () => {
+    $('#revealOverlay').classList.remove('active');
+    showToast('Card added to your collection!', 'success');
+    navigate('collection');
+  });
+
+  $('#btnTakeBuyback').addEventListener('click', async () => {
+    if (!lastPulledCard) return;
+    const ok = confirm(`Accept locked cash buyback of £${Number(lastPulledCard.buybackLocked).toFixed(2)}?`);
+    if (!ok) return;
+    showLoading(true);
+    try {
+      await processBuyback(lastPulledCard.id, lastPulledCard.buybackLocked);
+      $('#revealOverlay').classList.remove('active');
+      showToast(`Buyback of £${Number(lastPulledCard.buybackLocked).toFixed(2)} recorded. We’ll process payment shortly.`, 'success');
+      navigate('collection');
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      showLoading(false);
+    }
+  });
+
+  $('#btnConsign').addEventListener('click', async () => {
+    if (!lastPulledCard) return;
+    showLoading(true);
+    try {
+      await processConsign(lastPulledCard.id);
+      $('#revealOverlay').classList.remove('active');
+      showToast('Card transferred to Kollect consignment. You’ll receive further instructions by email.', 'success');
+      navigate('collection');
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      showLoading(false);
+    }
+  });
+
+  // ---------- Buyback / Consign helpers ----------
+  async function processBuyback(cardId, amount) {
+    const batch = db.batch();
+    const invRef = db.collection('inventory').doc(cardId);
+    const userCardRef = db.collection('users').doc(currentUser.uid)
+      .collection('collection').doc(cardId);
+
+    batch.update(invRef, {
+      status: 'buyback',
+      buybackAt: firebase.firestore.FieldValue.serverTimestamp(),
+      buybackAmount: amount
+    });
+    batch.update(userCardRef, {
+      status: 'buyback',
+      buybackAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    batch.set(db.collection('buybacks').doc(), {
+      userId: currentUser.uid,
+      cardId,
+      amount,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      paid: false
+    });
+    await batch.commit();
+  }
+
+  async function processConsign(cardId) {
+    const batch = db.batch();
+    const invRef = db.collection('inventory').doc(cardId);
+    const userCardRef = db.collection('users').doc(currentUser.uid)
+      .collection('collection').doc(cardId);
+
+    batch.update(invRef, {
+      status: 'consigned',
+      consignedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    batch.update(userCardRef, {
+      status: 'consigned',
+      consignedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    batch.set(db.collection('consignments').doc(), {
+      userId: currentUser.uid,
+      cardId,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      status: 'pending'
+    });
+    await batch.commit();
+  }
+
+  // ---------- Recent Pulls ----------
+  async function loadRecentPulls() {
+    const el = $('#pullsFeed');
+    try {
+      const snap = await db.collection('pulls')
+        .orderBy('pulledAt', 'desc')
+        .limit(40)
+        .get();
+
+      if (snap.empty) {
+        el.innerHTML = `<div class="empty-state"><h3>No pulls yet</h3><p>Be the first to open a pack!</p></div>`;
+        return;
+      }
+
+      el.innerHTML = snap.docs.map(d => {
+        const p = d.data();
+        const time = p.pulledAt?.toDate ? p.pulledAt.toDate().toLocaleString('en-GB') : 'Just now';
+        return `
+          <div class="pull-item">
+            <img src="${p.imageUrl}" alt="${p.name}" loading="lazy" />
+            <div class="pull-item-info">
+              <div class="pull-item-name">${escapeHtml(p.name)}</div>
+              <div class="pull-item-time">
+                <span class="badge badge-grade-${p.grade}">${p.grader || ''} ${p.grade}</span>
+                · ${time}
+              </div>
+            </div>
+            <div class="text-muted" style="font-size:0.85rem">£${Number(p.marketAtOpen || 0).toFixed(0)} mkt</div>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {
+      console.error(e);
+      el.innerHTML = `<p class="text-danger">Could not load pulls.</p>`;
+    }
+  }
+
+  // ---------- My Collection ----------
+  async function loadCollection() {
+    const el = $('#collectionGrid');
+    if (!currentUser) {
+      el.innerHTML = `<div class="empty-state"><h3>Sign in to view your collection</h3></div>`;
+      return;
+    }
+    try {
+      const snap = await db.collection('users').doc(currentUser.uid)
+        .collection('collection')
+        .orderBy('pulledAt', 'desc')
+        .get();
+
+      if (snap.empty) {
+        el.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1">
+            <h3>No cards yet</h3>
+            <p>Open a pack to start your collection.</p>
+            <button class="btn btn-primary mt-2" data-page="buy">Buy a Pack</button>
+          </div>`;
+        return;
+      }
+
+      el.innerHTML = snap.docs.map(d => {
+        const c = d.data();
+        const statusBadge = {
+          owned: '<span class="badge badge-active">Owned</span>',
+          buyback: '<span class="badge badge-sold">Buyback Taken</span>',
+          consigned: '<span class="badge badge-pulled">Consigned</span>'
+        }[c.status] || '';
+
+        const actions = c.status === 'owned' ? `
+          <button class="btn btn-success btn-sm" data-action="buyback" data-id="${d.id}" data-amount="${c.buybackLocked}">
+            Cash £${Number(c.buybackLocked).toFixed(2)}
+          </button>
+          <button class="btn btn-primary btn-sm" data-action="consign" data-id="${d.id}">
+            Sell with Kollect
+          </button>
+        ` : '';
+
+        return `
+          <div class="card-item">
+            <img class="card-item-img" src="${c.imageUrl}" alt="${escapeHtml(c.name)}" loading="lazy" />
+            <div class="card-item-body">
+              <div class="card-item-name">${escapeHtml(c.name)}</div>
+              <div class="card-item-meta">
+                <span class="badge badge-grade-${c.grade}">${c.grader} ${c.grade}</span>
+                ${statusBadge}
+              </div>
+              <div class="text-muted" style="font-size:0.8rem;margin-bottom:8px">
+                Locked buyback: £${Number(c.buybackLocked).toFixed(2)}
+              </div>
+              <div class="card-item-actions">${actions}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      el.querySelectorAll('[data-action]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          const action = btn.dataset.action;
+          if (action === 'buyback') {
+            const amount = Number(btn.dataset.amount);
+            if (!confirm(`Accept locked cash buyback of £${amount.toFixed(2)}?`)) return;
+            showLoading(true);
+            try {
+              await processBuyback(id, amount);
+              showToast('Buyback recorded', 'success');
+              loadCollection();
+            } catch (e) {
+              showToast(e.message, 'error');
+            } finally {
+              showLoading(false);
+            }
+          }
+          if (action === 'consign') {
+            if (!confirm('Transfer this card to Kollect consignment?')) return;
+            showLoading(true);
+            try {
+              await processConsign(id);
+              showToast('Transferred to consignment', 'success');
+              loadCollection();
+            } catch (e) {
+              showToast(e.message, 'error');
+            } finally {
+              showLoading(false);
+            }
+          }
+        });
+      });
+    } catch (e) {
+      console.error(e);
+      el.innerHTML = `<p class="text-danger">Could not load collection.</p>`;
+    }
+  }
+
+  // ---------- Admin ----------
+  let uploadedImageUrl = '';
+
+  $('#btnCloudinary').addEventListener('click', () => {
+    if (!CLOUDINARY.cloudName || CLOUDINARY.cloudName.includes('YOUR_')) {
+      showToast('Set your Cloudinary cloud name in firebase-config.js', 'error');
+      return;
+    }
+    cloudinary.openUploadWidget(
+      {
+        cloudName: CLOUDINARY.cloudName,
+        uploadPreset: CLOUDINARY.uploadPreset,
+        sources: ['local', 'url', 'camera'],
+        multiple: false,
+        maxFileSize: 5000000,
+        clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
+        folder: 'kollect-vault'
+      },
+      (error, result) => {
+        if (!error && result && result.event === 'success') {
+          uploadedImageUrl = result.info.secure_url;
+          $('#cardImageUrl').value = uploadedImageUrl;
+          $('#cardImgPreview').src = uploadedImageUrl;
+          $('#cardImgPreview').classList.remove('hidden');
+          $('#uploadStatus').textContent = 'Image uploaded ✓';
+          showToast('Image uploaded', 'success');
+        }
+      }
+    );
+  });
+
+  $('#formUploadCard').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+
+    const imageUrl = $('#cardImageUrl').value || uploadedImageUrl;
+    if (!imageUrl) {
+      showToast('Please upload a card image', 'error');
+      return;
+    }
+
+    showLoading(true);
+    try {
+      await db.collection('inventory').add({
+        name: $('#cardName').value.trim(),
+        set: $('#cardSet').value.trim(),
+        grade: Number($('#cardGrade').value),
+        grader: $('#cardGrader').value,
+        cert: $('#cardCert').value.trim(),
+        cost: Number($('#cardCost').value),
+        marketValue: Number($('#cardMarket').value),
+        tcgPlayerId: $('#cardTcgId').value.trim() || null,
+        imageUrl,
+        status: 'active',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        createdBy: currentUser.uid
+      });
+
+      showToast('Card added to inventory', 'success');
+      e.target.reset();
+      $('#cardImgPreview').classList.add('hidden');
+      $('#uploadStatus').textContent = 'No image selected';
+      uploadedImageUrl = '';
+      loadAdmin();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      showLoading(false);
+    }
+  });
+
+  async function loadAdmin() {
+    try {
+      const [invSnap, salesSnap, pullsSnap] = await Promise.all([
+        db.collection('inventory').get(),
+        db.collection('sales').get(),
+        db.collection('pulls').get()
+      ]);
+
+      const all = invSnap.docs.map(d => d.data());
+      const active = all.filter(c => c.status === 'active').length;
+      const pulled = pullsSnap.size;
+      let revenue = 0;
+      let totalCost = 0;
+      salesSnap.forEach(d => {
+        const s = d.data();
+        revenue += s.packPrice || PACK_PRICE;
+        totalCost += s.cost || 16;
+      });
+      const margin = revenue - totalCost;
+
+      $('#statActive').textContent = active;
+      $('#statPulled').textContent = pulled;
+      $('#statRevenue').textContent = '£' + revenue.toFixed(0);
+      $('#statMargin').textContent = '£' + margin.toFixed(0);
+    } catch (e) {
+      console.warn(e);
+    }
+
+    const filter = $('#filterStatus').value;
+    let query = db.collection('inventory').orderBy('createdAt', 'desc');
+    try {
+      const snap = await query.get();
+      let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (filter !== 'all') rows = rows.filter(r => r.status === filter);
+
+      const tbody = $('#inventoryTable');
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No cards match.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(c => `
+        <tr>
+          <td><img src="${c.imageUrl}" alt="" /></td>
+          <td>
+            <strong>${escapeHtml(c.name)}</strong><br>
+            <span class="text-muted" style="font-size:0.8rem">${escapeHtml(c.set || '')}</span>
+          </td>
+          <td><span class="badge badge-grade-${c.grade}">${c.grader} ${c.grade}</span></td>
+          <td>£${Number(c.cost).toFixed(2)}</td>
+          <td>£${Number(c.marketValue).toFixed(2)}</td>
+          <td><span class="badge badge-${c.status === 'active' ? 'active' : c.status === 'pulled' ? 'pulled' : 'sold'}">${c.status}</span></td>
+          <td>
+            ${c.status === 'active' ? `<button class="btn btn-danger btn-sm" data-del="${c.id}">Remove</button>` : '—'}
+          </td>
+        </tr>
+      `).join('');
+
+      tbody.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Remove this card from inventory?')) return;
+          await db.collection('inventory').doc(btn.dataset.del).delete();
+          showToast('Card removed', 'success');
+          loadAdmin();
+        });
+      });
+    } catch (e) {
+      console.error(e);
+      $('#inventoryTable').innerHTML = `<tr><td colspan="7" class="text-danger">Load failed. Check Firestore indexes / rules.</td></tr>`;
+    }
+  }
+
+  $('#filterStatus').addEventListener('change', loadAdmin);
+
+  $('#modalClose').addEventListener('click', () => {
+    $('#actionModal').classList.remove('active');
+  });
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  auth.onAuthStateChanged((user) => {
+    updateAuthUI(user);
+    if ($('#page-home').classList.contains('active')) loadHomeOdds();
+  });
+
+  loadHomeOdds();
+})();
