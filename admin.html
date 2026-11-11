@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Kollect Vault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .admin-layout {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .admin-layout { grid-template-columns: 1fr; }
+    }
+
+    .upload-preview {
+      width: 120px;
+      height: 168px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      margin-top: 8px;
+      display: none;
+    }
+    .upload-preview.show { display: block; }
+
+    .inv-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    table.inv-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    table.inv-table th,
+    table.inv-table td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    table.inv-table th {
+      background: var(--bg2);
+      color: var(--muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-weight: 600;
+    }
+    table.inv-table tr:last-child td { border-bottom: none; }
+    table.inv-table img {
+      width: 40px;
+      height: 56px;
+      object-fit: cover;
+      border-radius: 4px;
+      background: var(--bg2);
+    }
+
+    .badge-available {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .badge-redeemed {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .filter-bar select {
+      width: auto;
+      min-width: 140px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--success);
+      padding: 14px 18px;
+      border-radius: 8px;
+      z-index: 400;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .toast.show { display: block; }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">Kollect <span>Vault</span></a>
+      <button class="burger" id="burger" aria-label="Menu">☰</button>
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="buy.html">Buy Pack</a></li>
+        <li><a href="pulls.html">Recent Pulls</a></li>
+        <li><a href="collection.html">My Collection</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="admin.html" class="active">Admin</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container page-content">
+    <h1 class="page-title">Admin Panel</h1>
+    <p class="page-sub">Upload graded cards to the vault. Available cards are used for random pack pulls.</p>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-label">Total Cards</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statAvailable">0</div>
+        <div class="stat-label">Available</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statRedeemed">0</div>
+        <div class="stat-label">Redeemed</div>
+      </div>
+    </div>
+
+    <div class="admin-layout">
+
+      <div class="card">
+        <h2 style="margin-bottom:20px;font-size:1.15rem">Upload New Card</h2>
+        <form id="formUpload">
+          <div class="form-group">
+            <label>Card Name *</label>
+            <input type="text" class="form-control" id="cardName" required placeholder="e.g. Charizard VMAX" />
+          </div>
+
+          <div class="form-group">
+            <label>Grading Company *</label>
+            <select class="form-control" id="cardGrader" required>
+              <option value="PSA">PSA</option>
+              <option value="CGC">CGC</option>
+              <option value="BGS">BGS</option>
+              <option value="SGC">SGC</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Grade *</label>
+            <select class="form-control" id="cardGrade" required>
+              <option value="10">10</option>
+              <option value="9">9</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Serial / Cert Number *</label>
+            <input type="text" class="form-control" id="cardSerial" required placeholder="e.g. 12345678" />
+          </div>
+
+          <div class="form-group">
+            <label>Market Value (£) *</label>
+            <input type="number" class="form-control" id="cardMarket" required min="0" step="0.01" placeholder="e.g. 65" />
+          </div>
+
+          <div class="form-group">
+            <label>Card Image *</label>
+            <input type="file" class="form-control" id="cardImage" accept="image/*" required />
+            <img id="imgPreview" class="upload-preview" alt="Preview" />
+          </div>
+
+          <button type="submit" class="btn btn-primary w-full">Add to Inventory</button>
+        </form>
+      </div>
+
+      <div>
+        <div class="flex justify-between items-center mb-2" style="flex-wrap:wrap;gap:10px">
+          <h2 style="font-size:1.15rem">Inventory</h2>
+          <div class="filter-bar" style="margin:0">
+            <select class="form-control" id="filterStatus">
+              <option value="all">All status</option>
+              <option value="available">Available</option>
+              <option value="redeemed">Redeemed</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="inv-table-wrap">
+          <table class="inv-table">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Card</th>
+                <th>Grade</th>
+                <th>Serial</th>
+                <th>Market</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="inventoryBody">
+              <tr>
+                <td colspan="7" class="text-center text-dim" style="padding:32px">No cards yet. Upload your first card.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">Kollect Vault Admin &copy; 2026</div>
+  </footer>
+
+  <div class="toast" id="toast">Card added to inventory</div>
+
+  <script src="js/nav.js"></script>
+  <script>
+    var STORAGE_KEY = 'kollectInventory';
+    var previewDataUrl = '';
+
+    function getInventory() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveInventory(list) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      renderStats();
+      renderTable();
+    }
+
+    function showToast(msg) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(function () { t.classList.remove('show'); }, 2500);
+    }
+
+    document.getElementById('cardImage').addEventListener('change', function (e) {
+      var file = e.target.files[0];
+      if (!file) {
+        previewDataUrl = '';
+        document.getElementById('imgPreview').classList.remove('show');
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        previewDataUrl = ev.target.result;
+        var img = document.getElementById('imgPreview');
+        img.src = previewDataUrl;
+        img.classList.add('show');
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('formUpload').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      if (!previewDataUrl) {
+        alert('Please choose a card image.');
+        return;
+      }
+
+      var list = getInventory();
+      var card = {
+        id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 7),
+        name: document.getElementById('cardName').value.trim(),
+        grader: document.getElementById('cardGrader').value,
+        grade: Number(document.getElementById('cardGrade').value),
+        serial: document.getElementById('cardSerial').value.trim(),
+        market: Number(document.getElementById('cardMarket').value),
+        image: previewDataUrl,
+        status: 'available',
+        createdAt: new Date().toISOString(),
+        redeemedAt: null
+      };
+
+      list.unshift(card);
+      saveInventory(list);
+
+      e.target.reset();
+      previewDataUrl = '';
+      document.getElementById('imgPreview').classList.remove('show');
+      showToast('Card added to inventory');
+    });
+
+    function renderStats() {
+      var list = getInventory();
+      var available = list.filter(function (c) { return c.status === 'available'; }).length;
+      var redeemed = list.filter(function (c) { return c.status === 'redeemed'; }).length;
+      document.getElementById('statTotal').textContent = list.length;
+      document.getElementById('statAvailable').textContent = available;
+      document.getElementById('statRedeemed').textContent = redeemed;
+    }
+
+    function renderTable() {
+      var list = getInventory();
+      var filter = document.getElementById('filterStatus').value;
+      if (filter !== 'all') {
+        list = list.filter(function (c) { return c.status === filter; });
+      }
+
+      var tbody = document.getElementById('inventoryBody');
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-dim" style="padding:32px">No cards match.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = list.map(function (c) {
+        var statusClass = c.status === 'available' ? 'badge-available' : 'badge-redeemed';
+        var statusLabel = c.status === 'available' ? 'Available' : 'Redeemed';
+        var actions = c.status === 'available'
+          ? '<button class="btn btn-secondary btn-sm" data-redeem="' + c.id + '">Mark redeemed</button> ' +
+            '<button class="btn btn-secondary btn-sm" data-delete="' + c.id + '" style="color:#ef4444">Delete</button>'
+          : '<button class="btn btn-secondary btn-sm" data-delete="' + c.id + '" style="color:#ef4444">Delete</button>';
+
+        return (
+          '<tr>' +
+            '<td><img src="' + c.image + '" alt="" /></td>' +
+            '<td><strong>' + escapeHtml(c.name) + '</strong></td>' +
+            '<td><span class="badge ' + (c.grade === 10 ? 'badge-10' : 'badge-9') + '">' +
+              escapeHtml(c.grader) + ' ' + c.grade + '</span></td>' +
+            '<td class="text-dim">' + escapeHtml(c.serial) + '</td>' +
+            '<td>£' + Number(c.market).toFixed(2) + '</td>' +
+            '<td><span class="badge ' + statusClass + '">' + statusLabel + '</span></td>' +
+            '<td style="white-space:nowrap">' + actions + '</td>' +
+          '</tr>'
+        );
+      }).join('');
+
+      tbody.querySelectorAll('[data-redeem]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          markRedeemed(btn.getAttribute('data-redeem'));
+        });
+      });
+      tbody.querySelectorAll('[data-delete]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (confirm('Delete this card from inventory?')) {
+            deleteCard(btn.getAttribute('data-delete'));
+          }
+        });
+      });
+    }
+
+    function markRedeemed(id) {
+      var list = getInventory();
+      list = list.map(function (c) {
+        if (c.id === id) {
+          c.status = 'redeemed';
+          c.redeemedAt = new Date().toISOString();
+        }
+        return c;
+      });
+      saveInventory(list);
+      showToast('Card marked as redeemed');
+    }
+
+    function deleteCard(id) {
+      var list = getInventory().filter(function (c) { return c.id !== id; });
+      saveInventory(list);
+      showToast('Card deleted');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    document.getElementById('filterStatus').addEventListener('change', renderTable);
+
+    renderStats();
+    renderTable();
+  </script>
+</body>
+</html>
