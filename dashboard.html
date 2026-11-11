@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Kollect Vault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">Kollect <span>Vault</span></a>
+      <button class="burger" id="burger" aria-label="Menu">☰</button>
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="buy.html">Buy Pack</a></li>
+        <li><a href="pulls.html">Recent Pulls</a></li>
+        <li><a href="collection.html">My Collection</a></li>
+        <li><a href="dashboard.html" class="active">Dashboard</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container page-content">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-sub">Your vault overview and quick actions.</p>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-value">2</div>
+        <div class="stat-label">Cards Owned</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">£82</div>
+        <div class="stat-label">Locked Buyback</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">3</div>
+        <div class="stat-label">Packs Opened</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">1</div>
+        <div class="stat-label">Consigned</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3 style="margin-bottom:12px">Quick Actions</h3>
+        <div class="flex gap-2" style="flex-wrap:wrap">
+          <a href="buy.html" class="btn btn-primary">Buy a Pack</a>
+          <a href="collection.html" class="btn btn-secondary">View Collection</a>
+          <a href="pulls.html" class="btn btn-secondary">Recent Pulls</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:12px">Account</h3>
+        <p class="text-muted mb-2">Sign in to sync your collection across devices and unlock buyback / consign.</p>
+        <button class="btn btn-secondary btn-sm">Sign In (coming soon)</button>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <h3 style="margin-bottom:12px">How buyback works</h3>
+      <p class="text-muted" style="font-size:0.95rem">
+        When you open a pack, we lock a cash offer at <strong>70% of the card’s market value at that moment</strong>.
+        That price never increases later. You can take the cash anytime from My Collection, or choose
+        “Sell with Kollect” to move the card into consignment.
+      </p>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">Kollect Vault &copy; 2026</div>
+  </footer>
+
+  <script src="js/nav.js"></script>
+</body>
+</html>
