@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Collection — Kollect Vault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">Kollect <span>Vault</span></a>
+      <button class="burger" id="burger" aria-label="Menu">☰</button>
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="buy.html">Buy Pack</a></li>
+        <li><a href="pulls.html">Recent Pulls</a></li>
+        <li><a href="collection.html" class="active">My Collection</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container page-content">
+    <h1 class="page-title">My Collection</h1>
+    <p class="page-sub">Cards you’ve pulled. Sell now or take the locked cash offer.</p>
+
+    <div class="grid-3" id="collectionGrid">
+
+      <div class="card-item">
+        <img src="https://via.placeholder.com/280x392/1a1d27/8b5cf6?text=Charizard" alt="Charizard VMAX" />
+        <div class="card-item-body">
+          <div class="card-item-name">Charizard VMAX</div>
+          <div class="mb-2">
+            <span class="badge badge-10">PSA 10</span>
+          </div>
+          <p class="text-dim" style="font-size:0.82rem;margin-bottom:10px">Locked buyback: £59.50</p>
+          <div class="flex gap-2" style="flex-wrap:wrap">
+            <button class="btn btn-success btn-sm">Cash £59.50</button>
+            <button class="btn btn-primary btn-sm">Sell with Kollect</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-item">
+        <img src="https://via.placeholder.com/280x392/1a1d27/94a3b8?text=Pikachu" alt="Pikachu V" />
+        <div class="card-item-body">
+          <div class="card-item-name">Pikachu V</div>
+          <div class="mb-2">
+            <span class="badge badge-9">CGC 9</span>
+          </div>
+          <p class="text-dim" style="font-size:0.82rem;margin-bottom:10px">Locked buyback: £22.40</p>
+          <div class="flex gap-2" style="flex-wrap:wrap">
+            <button class="btn btn-success btn-sm">Cash £22.40</button>
+            <button class="btn btn-primary btn-sm">Sell with Kollect</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <p class="text-dim text-center mt-3" style="font-size:0.85rem">
+      Connect Firebase Auth + Firestore to load each user’s real collection.
+    </p>
+  </div>
+
+  <footer>
+    <div class="container">Kollect Vault &copy; 2026</div>
+  </footer>
+
+  <script src="js/nav.js"></script>
+</body>
+</html>
