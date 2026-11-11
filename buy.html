@@ -7,6 +7,83 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    /* Payment + Reveal overlays */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      z-index: 300;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .overlay.active { display: flex; }
+
+    .modal-box {
+      background: #1a1d27;
+      border: 1px solid #2a2f3d;
+      border-radius: 16px;
+      padding: 28px;
+      max-width: 400px;
+      width: 100%;
+      position: relative;
+    }
+    .modal-box h2 { margin-bottom: 16px; font-size: 1.3rem; }
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: #6b7280;
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .pay-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #2a2f3d;
+      font-size: 0.95rem;
+    }
+    .pay-row:last-of-type { border-bottom: none; margin-bottom: 20px; }
+    .pay-total { font-size: 1.4rem; font-weight: 800; color: #f0f2f5; }
+
+    .reveal-wrap {
+      text-align: center;
+      max-width: 420px;
+      width: 100%;
+    }
+    .reveal-wrap video {
+      width: 100%;
+      max-width: 360px;
+      border-radius: 12px;
+      background: #000;
+      margin-bottom: 16px;
+    }
+    .reveal-card-box {
+      background: #1a1d27;
+      border: 2px solid #8b5cf6;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 0 50px rgba(139, 92, 246, 0.35);
+      animation: popIn 0.45s ease-out;
+    }
+    .reveal-card-box img {
+      width: 200px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.5);
+    }
+    @keyframes popIn {
+      from { transform: scale(0.75); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+  </style>
 </head>
 <body>
 
@@ -68,10 +145,186 @@
     <div class="container">Kollect Vault &copy; 2026</div>
   </footer>
 
+  <!-- ===== FAKE PAYMENT MODAL ===== -->
+  <div class="overlay" id="payOverlay">
+    <div class="modal-box">
+      <button class="modal-close" id="payClose">&times;</button>
+      <h2>Checkout</h2>
+      <div class="pay-row">
+        <span class="text-muted">Kollect Vault Pack</span>
+        <span>£25.00</span>
+      </div>
+      <div class="pay-row">
+        <span class="text-muted">Processing fee</span>
+        <span>£0.00</span>
+      </div>
+      <div class="pay-row">
+        <span class="pay-total">Total</span>
+        <span class="pay-total">£25.00</span>
+      </div>
+
+      <div class="form-group">
+        <label>Card number</label>
+        <input type="text" class="form-control" value="4242 4242 4242 4242" readonly />
+      </div>
+      <div class="grid-2" style="gap:12px">
+        <div class="form-group">
+          <label>Expiry</label>
+          <input type="text" class="form-control" value="12 / 28" readonly />
+        </div>
+        <div class="form-group">
+          <label>CVC</label>
+          <input type="text" class="form-control" value="123" readonly />
+        </div>
+      </div>
+
+      <button class="btn btn-primary w-full" id="btnPayNow">Pay Now — £25</button>
+      <p class="text-dim text-center mt-2" style="font-size:0.78rem">Demo checkout — no real charge</p>
+    </div>
+  </div>
+
+  <!-- ===== VIDEO REVEAL ===== -->
+  <div class="overlay" id="videoOverlay">
+    <div class="reveal-wrap">
+      <video id="ripVideo" playsinline>
+        <source src="Ripvideo.mov" type="video/quicktime" />
+        <source src="Ripvideo.mov" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+      <p class="text-muted" id="videoStatus">Opening your pack...</p>
+    </div>
+  </div>
+
+  <!-- ===== CARD RESULT ===== -->
+  <div class="overlay" id="resultOverlay">
+    <div class="reveal-wrap">
+      <div class="reveal-card-box">
+        <img id="resultImg" src="" alt="Your card" />
+        <div id="resultBadge" class="badge badge-10" style="margin-bottom:10px">Grade 10</div>
+        <h2 id="resultName" style="margin-bottom:6px">Card Name</h2>
+        <p class="text-muted" id="resultMeta">Locked buyback shown below</p>
+        <p style="margin:12px 0;font-size:1.2rem;font-weight:700;color:#10b981" id="resultBuyback">£0.00</p>
+        <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap">
+          <a href="collection.html" class="btn btn-primary">View My Collection</a>
+          <button class="btn btn-secondary" id="btnCloseResult">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="js/nav.js"></script>
   <script>
+    // ===== CARD POOL (your images) =====
+    // Put these image files in the same folder as buy.html (or in /images/)
+    var CARD_POOL = [
+      { file: 'IMG_5657.jpg', name: 'Mystery Graded Card', grade: 10, grader: 'PSA', market: 85 },
+      { file: 'IMG_5655.jpg', name: 'Mystery Graded Card', grade: 9,  grader: 'CGC', market: 42 },
+      { file: 'IMG_5656.jpg', name: 'Mystery Graded Card', grade: 10, grader: 'BGS', market: 70 },
+      { file: 'IMG_5311.jpg', name: 'Mystery Graded Card', grade: 9,  grader: 'PSA', market: 38 },
+      { file: 'IMG_5319.jpg', name: 'Mystery Graded Card', grade: 10, grader: 'PSA', market: 95 },
+      { file: 'IMG_5320.jpg', name: 'Mystery Graded Card', grade: 9,  grader: 'CGC', market: 48 },
+      { file: 'IMG_5322.jpg', name: 'Mystery Graded Card', grade: 10, grader: 'PSA', market: 62 }
+    ];
+
+    var BUYBACK_PERCENT = 0.70;
+
+    // Elements
+    var payOverlay    = document.getElementById('payOverlay');
+    var videoOverlay  = document.getElementById('videoOverlay');
+    var resultOverlay = document.getElementById('resultOverlay');
+    var ripVideo      = document.getElementById('ripVideo');
+
+    // Open fake payment
     document.getElementById('btnBuy').addEventListener('click', function () {
-      alert('Payment + Firebase pull logic goes here.\n\nFor now this is a placeholder. Connect Stripe + Firestore next.');
+      payOverlay.classList.add('active');
+    });
+
+    document.getElementById('payClose').addEventListener('click', function () {
+      payOverlay.classList.remove('active');
+    });
+
+    // Pay Now → play video → reveal card
+    document.getElementById('btnPayNow').addEventListener('click', function () {
+      payOverlay.classList.remove('active');
+      startReveal();
+    });
+
+    function startReveal() {
+      videoOverlay.classList.add('active');
+      document.getElementById('videoStatus').textContent = 'Opening your pack...';
+
+      // Reset and play video
+      ripVideo.currentTime = 0;
+      var playPromise = ripVideo.play();
+
+      if (playPromise !== undefined) {
+        playPromise.catch(function () {
+          // Autoplay blocked — skip to card after short delay
+          setTimeout(showRandomCard, 1500);
+        });
+      }
+
+      // When video ends (or after max 12s fallback)
+      var done = false;
+      function finishVideo() {
+        if (done) return;
+        done = true;
+        showRandomCard();
+      }
+
+      ripVideo.onended = finishVideo;
+      setTimeout(finishVideo, 12000);
+    }
+
+    function showRandomCard() {
+      videoOverlay.classList.remove('active');
+      ripVideo.pause();
+
+      // Pick random card
+      var card = CARD_POOL[Math.floor(Math.random() * CARD_POOL.length)];
+      var buyback = Math.round(card.market * BUYBACK_PERCENT * 100) / 100;
+
+      // Fill result UI
+      document.getElementById('resultImg').src = card.file;
+      document.getElementById('resultImg').onerror = function () {
+        // Try .JPG / .jpeg / .png if .jpg fails
+        var base = card.file.replace(/\.(jpg|jpeg|png|JPG|JPEG|PNG)$/, '');
+        this.src = base + '.JPG';
+      };
+      document.getElementById('resultName').textContent = card.name;
+      document.getElementById('resultMeta').textContent = card.grader + ' ' + card.grade + ' · Market £' + card.market;
+      document.getElementById('resultBuyback').textContent = 'Locked buyback: £' + buyback.toFixed(2);
+
+      var badge = document.getElementById('resultBadge');
+      badge.textContent = card.grader + ' ' + card.grade;
+      badge.className = 'badge ' + (card.grade === 10 ? 'badge-10' : 'badge-9');
+
+      // Save to user vault (localStorage)
+      saveToVault({
+        id: Date.now().toString(),
+        file: card.file,
+        name: card.name,
+        grade: card.grade,
+        grader: card.grader,
+        market: card.market,
+        buyback: buyback,
+        pulledAt: new Date().toISOString()
+      });
+
+      resultOverlay.classList.add('active');
+    }
+
+    function saveToVault(card) {
+      var vault = [];
+      try {
+        vault = JSON.parse(localStorage.getItem('kollectVault') || '[]');
+      } catch (e) {}
+      vault.unshift(card);
+      localStorage.setItem('kollectVault', JSON.stringify(vault));
+    }
+
+    document.getElementById('btnCloseResult').addEventListener('click', function () {
+      resultOverlay.classList.remove('active');
     });
   </script>
 </body>
