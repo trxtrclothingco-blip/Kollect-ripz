@@ -14,6 +14,10 @@ const ADMIN_UIDS = [
   "yhBQ8LdSfEYpp02KykaHG20eYLC2"
 ];
 
+// Cloudinary
+const CLOUDINARY_CLOUD_NAME = "def0sfrxq";
+const CLOUDINARY_UPLOAD_PRESET = "Kolkectrips";
+
 firebase.initializeApp(firebaseConfig);
 
 const auth = firebase.auth();
@@ -24,5 +28,7 @@ window.Kollect = {
   db: db,
   BUYBACK_PERCENT: BUYBACK_PERCENT,
   PACK_PRICE: PACK_PRICE,
-  ADMIN_UIDS: ADMIN_UIDS
+  ADMIN_UIDS: ADMIN_UIDS,
+  CLOUDINARY_CLOUD_NAME: CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_UPLOAD_PRESET: CLOUDINARY_UPLOAD_PRESET
 };
