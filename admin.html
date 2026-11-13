@@ -17,7 +17,6 @@
     @media (max-width: 900px) {
       .admin-layout { grid-template-columns: 1fr; }
     }
-
     .upload-preview {
       width: 120px;
       height: 168px;
@@ -29,7 +28,6 @@
       display: none;
     }
     .upload-preview.show { display: block; }
-
     .inv-table-wrap {
       overflow-x: auto;
       border: 1px solid var(--border);
@@ -63,7 +61,6 @@
       border-radius: 4px;
       background: var(--bg2);
     }
-
     .badge-available {
       background: rgba(16, 185, 129, 0.15);
       color: #10b981;
@@ -74,18 +71,6 @@
       color: #ef4444;
       border: 1px solid rgba(239, 68, 68, 0.3);
     }
-
-    .filter-bar {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-    }
-    .filter-bar select {
-      width: auto;
-      min-width: 140px;
-    }
-
     .toast {
       position: fixed;
       bottom: 24px;
@@ -100,6 +85,7 @@
       display: none;
     }
     .toast.show { display: block; }
+    .admin-gate { max-width: 480px; margin: 40px auto; text-align: center; }
   </style>
 </head>
 <body>
@@ -110,19 +96,27 @@
       <button class="burger" id="burger" aria-label="Menu">☰</button>
       <ul class="nav-menu" id="navMenu">
         <li><a href="index.html">Home</a></li>
-        <li><a href="auth.html">Sign In</a></li>
         <li><a href="buy.html">Buy Pack</a></li>
         <li><a href="pulls.html">Recent Pulls</a></li>
         <li><a href="collection.html">My Collection</a></li>
         <li><a href="dashboard.html">Dashboard</a></li>
         <li><a href="admin.html" class="active">Admin</a></li>
+        <li><a href="auth.html">Sign In</a></li>
       </ul>
     </div>
   </nav>
 
-  <div class="container page-content">
+  <div class="container page-content" id="gate" style="display:none">
+    <div class="admin-gate card">
+      <h2 style="margin-bottom:12px">Admin only</h2>
+      <p class="text-muted mb-2">Sign in with an admin account to manage inventory.</p>
+      <a href="auth.html" class="btn btn-primary">Sign In</a>
+    </div>
+  </div>
+
+  <div class="container page-content" id="adminUI" style="display:none">
     <h1 class="page-title">Admin Panel</h1>
-    <p class="page-sub">Upload graded cards to the vault. Available cards are used for random pack pulls.</p>
+    <p class="page-sub">Images → Cloudinary · Card data → Firebase</p>
 
     <div class="stat-grid">
       <div class="stat-card">
@@ -140,7 +134,6 @@
     </div>
 
     <div class="admin-layout">
-
       <div class="card">
         <h2 style="margin-bottom:20px;font-size:1.15rem">Upload New Card</h2>
         <form id="formUpload">
@@ -148,7 +141,6 @@
             <label>Card Name *</label>
             <input type="text" class="form-control" id="cardName" required placeholder="e.g. Charizard VMAX" />
           </div>
-
           <div class="form-group">
             <label>Grading Company *</label>
             <select class="form-control" id="cardGrader" required>
@@ -158,7 +150,6 @@
               <option value="SGC">SGC</option>
             </select>
           </div>
-
           <div class="form-group">
             <label>Grade *</label>
             <select class="form-control" id="cardGrade" required>
@@ -166,39 +157,32 @@
               <option value="9">9</option>
             </select>
           </div>
-
           <div class="form-group">
             <label>Serial / Cert Number *</label>
             <input type="text" class="form-control" id="cardSerial" required placeholder="e.g. 12345678" />
           </div>
-
           <div class="form-group">
             <label>Market Value (£) *</label>
             <input type="number" class="form-control" id="cardMarket" required min="0" step="0.01" placeholder="e.g. 65" />
           </div>
-
           <div class="form-group">
             <label>Card Image *</label>
             <input type="file" class="form-control" id="cardImage" accept="image/*" required />
             <img id="imgPreview" class="upload-preview" alt="Preview" />
           </div>
-
-          <button type="submit" class="btn btn-primary w-full">Add to Inventory</button>
+          <button type="submit" class="btn btn-primary w-full" id="btnUpload">Add to Inventory</button>
         </form>
       </div>
 
       <div>
         <div class="flex justify-between items-center mb-2" style="flex-wrap:wrap;gap:10px">
           <h2 style="font-size:1.15rem">Inventory</h2>
-          <div class="filter-bar" style="margin:0">
-            <select class="form-control" id="filterStatus">
-              <option value="all">All status</option>
-              <option value="available">Available</option>
-              <option value="redeemed">Redeemed</option>
-            </select>
-          </div>
+          <select class="form-control" id="filterStatus" style="width:auto;min-width:140px">
+            <option value="all">All status</option>
+            <option value="available">Available</option>
+            <option value="redeemed">Redeemed</option>
+          </select>
         </div>
-
         <div class="inv-table-wrap">
           <table class="inv-table">
             <thead>
@@ -213,41 +197,32 @@
               </tr>
             </thead>
             <tbody id="inventoryBody">
-              <tr>
-                <td colspan="7" class="text-center text-dim" style="padding:32px">No cards yet. Upload your first card.</td>
-              </tr>
+              <tr><td colspan="7" class="text-center text-dim" style="padding:32px">Loading…</td></tr>
             </tbody>
           </table>
         </div>
       </div>
-
     </div>
   </div>
 
   <footer>
     <div class="container">Kollect Vault Admin &copy; 2026</div>
   </footer>
+  <div class="toast" id="toast">Saved</div>
 
-  <div class="toast" id="toast">Card added to inventory</div>
-
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
   <script src="js/nav.js"></script>
   <script>
-    var STORAGE_KEY = 'kollectInventory';
-    var previewDataUrl = '';
-
-    function getInventory() {
-      try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      } catch (e) {
-        return [];
-      }
-    }
-
-    function saveInventory(list) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-      renderStats();
-      renderTable();
-    }
+    var db = firebase.firestore();
+    var auth = firebase.auth();
+    var ADMIN_UIDS = (window.Kollect && window.Kollect.ADMIN_UIDS) || [];
+    var CLOUD_NAME = (window.Kollect && window.Kollect.CLOUDINARY_CLOUD_NAME) || '';
+    var UPLOAD_PRESET = (window.Kollect && window.Kollect.CLOUDINARY_UPLOAD_PRESET) || '';
+    var selectedFile = null;
+    var allCards = [];
 
     function showToast(msg) {
       var t = document.getElementById('toast');
@@ -256,92 +231,144 @@
       setTimeout(function () { t.classList.remove('show'); }, 2500);
     }
 
-    document.getElementById('cardImage').addEventListener('change', function (e) {
-      var file = e.target.files[0];
-      if (!file) {
-        previewDataUrl = '';
-        document.getElementById('imgPreview').classList.remove('show');
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function isAdminUser(user) {
+      return !!(user && ADMIN_UIDS.indexOf(user.uid) !== -1);
+    }
+
+    auth.onAuthStateChanged(function (user) {
+      if (!user || !isAdminUser(user)) {
+        document.getElementById('gate').style.display = '';
+        document.getElementById('adminUI').style.display = 'none';
         return;
       }
-      var reader = new FileReader();
-      reader.onload = function (ev) {
-        previewDataUrl = ev.target.result;
-        var img = document.getElementById('imgPreview');
-        img.src = previewDataUrl;
-        img.classList.add('show');
-      };
-      reader.readAsDataURL(file);
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('adminUI').style.display = '';
+      listenInventory();
     });
+
+    document.getElementById('cardImage').addEventListener('change', function (e) {
+      selectedFile = e.target.files[0] || null;
+      var img = document.getElementById('imgPreview');
+      if (!selectedFile) {
+        img.classList.remove('show');
+        return;
+      }
+      img.src = URL.createObjectURL(selectedFile);
+      img.classList.add('show');
+    });
+
+    function uploadToCloudinary(file) {
+      if (!CLOUD_NAME || !UPLOAD_PRESET) {
+        return Promise.reject(new Error('Cloudinary not configured'));
+      }
+      var url = 'https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/image/upload';
+      var fd = new FormData();
+      fd.append('file', file);
+      fd.append('upload_preset', UPLOAD_PRESET);
+      return fetch(url, { method: 'POST', body: fd }).then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) {
+            throw new Error(data.error && data.error.message ? data.error.message : 'Cloudinary upload failed');
+          }
+          return data.secure_url;
+        });
+      });
+    }
 
     document.getElementById('formUpload').addEventListener('submit', function (e) {
       e.preventDefault();
-
-      if (!previewDataUrl) {
+      if (!selectedFile) {
         alert('Please choose a card image.');
         return;
       }
+      var btn = document.getElementById('btnUpload');
+      btn.disabled = true;
+      btn.textContent = 'Uploading image…';
 
-      var list = getInventory();
-      var card = {
-        id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 7),
-        name: document.getElementById('cardName').value.trim(),
-        grader: document.getElementById('cardGrader').value,
-        grade: Number(document.getElementById('cardGrade').value),
-        serial: document.getElementById('cardSerial').value.trim(),
-        market: Number(document.getElementById('cardMarket').value),
-        image: previewDataUrl,
-        status: 'available',
-        createdAt: new Date().toISOString(),
-        redeemedAt: null
-      };
-
-      list.unshift(card);
-      saveInventory(list);
-
-      e.target.reset();
-      previewDataUrl = '';
-      document.getElementById('imgPreview').classList.remove('show');
-      showToast('Card added to inventory');
+      uploadToCloudinary(selectedFile)
+        .then(function (imageUrl) {
+          btn.textContent = 'Saving to Firebase…';
+          return db.collection('inventory').add({
+            name: document.getElementById('cardName').value.trim(),
+            grader: document.getElementById('cardGrader').value,
+            grade: Number(document.getElementById('cardGrade').value),
+            serial: document.getElementById('cardSerial').value.trim(),
+            market: Number(document.getElementById('cardMarket').value),
+            imageUrl: imageUrl,
+            status: 'available',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            redeemedAt: null,
+            redeemedBy: null
+          });
+        })
+        .then(function () {
+          e.target.reset();
+          selectedFile = null;
+          document.getElementById('imgPreview').classList.remove('show');
+          showToast('Card saved (Cloudinary + Firebase)');
+        })
+        .catch(function (err) {
+          alert('Failed: ' + err.message);
+        })
+        .finally(function () {
+          btn.disabled = false;
+          btn.textContent = 'Add to Inventory';
+        });
     });
 
+    function listenInventory() {
+      db.collection('inventory').orderBy('createdAt', 'desc')
+        .onSnapshot(function (snap) {
+          allCards = [];
+          snap.forEach(function (doc) {
+            var d = doc.data();
+            d.id = doc.id;
+            allCards.push(d);
+          });
+          renderStats();
+          renderTable();
+        }, function (err) {
+          document.getElementById('inventoryBody').innerHTML =
+            '<tr><td colspan="7" class="text-center" style="padding:32px;color:#ef4444">' +
+            escapeHtml(err.message) + '</td></tr>';
+        });
+    }
+
     function renderStats() {
-      var list = getInventory();
-      var available = list.filter(function (c) { return c.status === 'available'; }).length;
-      var redeemed = list.filter(function (c) { return c.status === 'redeemed'; }).length;
-      document.getElementById('statTotal').textContent = list.length;
-      document.getElementById('statAvailable').textContent = available;
-      document.getElementById('statRedeemed').textContent = redeemed;
+      document.getElementById('statTotal').textContent = allCards.length;
+      document.getElementById('statAvailable').textContent = allCards.filter(function (c) { return c.status === 'available'; }).length;
+      document.getElementById('statRedeemed').textContent = allCards.filter(function (c) { return c.status === 'redeemed'; }).length;
     }
 
     function renderTable() {
-      var list = getInventory();
       var filter = document.getElementById('filterStatus').value;
-      if (filter !== 'all') {
-        list = list.filter(function (c) { return c.status === filter; });
-      }
-
+      var list = filter === 'all' ? allCards : allCards.filter(function (c) { return c.status === filter; });
       var tbody = document.getElementById('inventoryBody');
       if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-dim" style="padding:32px">No cards match.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-dim" style="padding:32px">No cards yet.</td></tr>';
         return;
       }
-
       tbody.innerHTML = list.map(function (c) {
         var statusClass = c.status === 'available' ? 'badge-available' : 'badge-redeemed';
         var statusLabel = c.status === 'available' ? 'Available' : 'Redeemed';
         var actions = c.status === 'available'
-          ? '<button class="btn btn-secondary btn-sm" data-redeem="' + c.id + '">Mark redeemed</button> ' +
-            '<button class="btn btn-secondary btn-sm" data-delete="' + c.id + '" style="color:#ef4444">Delete</button>'
-          : '<button class="btn btn-secondary btn-sm" data-delete="' + c.id + '" style="color:#ef4444">Delete</button>';
+          ? '<button type="button" class="btn btn-secondary btn-sm" data-redeem="' + c.id + '">Mark redeemed</button> '
+          : '';
+        actions += '<button type="button" class="btn btn-secondary btn-sm" data-delete="' + c.id + '" style="color:#ef4444">Delete</button>';
 
         return (
           '<tr>' +
-            '<td><img src="' + c.image + '" alt="" /></td>' +
+            '<td><img src="' + (c.imageUrl || '') + '" alt="" /></td>' +
             '<td><strong>' + escapeHtml(c.name) + '</strong></td>' +
             '<td><span class="badge ' + (c.grade === 10 ? 'badge-10' : 'badge-9') + '">' +
               escapeHtml(c.grader) + ' ' + c.grade + '</span></td>' +
             '<td class="text-dim">' + escapeHtml(c.serial) + '</td>' +
-            '<td>£' + Number(c.market).toFixed(2) + '</td>' +
+            '<td>£' + Number(c.market || 0).toFixed(2) + '</td>' +
             '<td><span class="badge ' + statusClass + '">' + statusLabel + '</span></td>' +
             '<td style="white-space:nowrap">' + actions + '</td>' +
           '</tr>'
@@ -350,50 +377,22 @@
 
       tbody.querySelectorAll('[data-redeem]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          markRedeemed(btn.getAttribute('data-redeem'));
+          db.collection('inventory').doc(btn.getAttribute('data-redeem')).update({
+            status: 'redeemed',
+            redeemedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }).then(function () { showToast('Marked redeemed'); });
         });
       });
       tbody.querySelectorAll('[data-delete]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          if (confirm('Delete this card from inventory?')) {
-            deleteCard(btn.getAttribute('data-delete'));
-          }
+          if (!confirm('Delete this card?')) return;
+          db.collection('inventory').doc(btn.getAttribute('data-delete')).delete()
+            .then(function () { showToast('Deleted'); });
         });
       });
     }
 
-    function markRedeemed(id) {
-      var list = getInventory();
-      list = list.map(function (c) {
-        if (c.id === id) {
-          c.status = 'redeemed';
-          c.redeemedAt = new Date().toISOString();
-        }
-        return c;
-      });
-      saveInventory(list);
-      showToast('Card marked as redeemed');
-    }
-
-    function deleteCard(id) {
-      var list = getInventory().filter(function (c) { return c.id !== id; });
-      saveInventory(list);
-      showToast('Card deleted');
-    }
-
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-
     document.getElementById('filterStatus').addEventListener('change', renderTable);
-
-    renderStats();
-    renderTable();
   </script>
 </body>
 </html>
