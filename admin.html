@@ -18,74 +18,31 @@
       .admin-layout { grid-template-columns: 1fr; }
     }
     .upload-preview {
-      width: 120px;
-      height: 168px;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--bg2);
-      margin-top: 8px;
-      display: none;
+      width: 120px; height: 168px; object-fit: cover; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg2); margin-top: 8px; display: none;
     }
     .upload-preview.show { display: block; }
-    .inv-table-wrap {
-      overflow-x: auto;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-    }
-    table.inv-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.88rem;
-    }
-    table.inv-table th,
-    table.inv-table td {
-      padding: 12px 14px;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
+    .inv-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+    table.inv-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    table.inv-table th, table.inv-table td {
+      padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle;
     }
     table.inv-table th {
-      background: var(--bg2);
-      color: var(--muted);
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      font-weight: 600;
+      background: var(--bg2); color: var(--muted); font-size: 0.75rem;
+      text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600;
     }
     table.inv-table tr:last-child td { border-bottom: none; }
-    table.inv-table img {
-      width: 40px;
-      height: 56px;
-      object-fit: cover;
-      border-radius: 4px;
-      background: var(--bg2);
-    }
-    .badge-available {
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-    .badge-redeemed {
-      background: rgba(239, 68, 68, 0.15);
-      color: #ef4444;
-      border: 1px solid rgba(239, 68, 68, 0.3);
-    }
+    table.inv-table img { width: 40px; height: 56px; object-fit: cover; border-radius: 4px; background: var(--bg2); }
+    .badge-available { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-redeemed { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
     .toast {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--success);
-      padding: 14px 18px;
-      border-radius: 8px;
-      z-index: 400;
-      font-size: 0.9rem;
-      display: none;
+      position: fixed; bottom: 24px; right: 24px; background: var(--card);
+      border: 1px solid var(--border); border-left: 3px solid var(--success);
+      padding: 14px 18px; border-radius: 8px; z-index: 400; font-size: 0.9rem; display: none;
     }
     .toast.show { display: block; }
     .admin-gate { max-width: 480px; margin: 40px auto; text-align: center; }
+    #statusMsg { text-align: center; padding: 40px 20px; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -106,100 +63,89 @@
     </div>
   </nav>
 
-  <div class="container page-content" id="gate" style="display:none">
-    <div class="admin-gate card">
-      <h2 style="margin-bottom:12px">Admin only</h2>
-      <p class="text-muted mb-2">Sign in with an admin account to manage inventory.</p>
-      <a href="auth.html" class="btn btn-primary">Sign In</a>
-    </div>
-  </div>
+  <div class="container page-content">
+    <div id="statusMsg">Checking access…</div>
 
-  <div class="container page-content" id="adminUI" style="display:none">
-    <h1 class="page-title">Admin Panel</h1>
-    <p class="page-sub">Images → Cloudinary · Card data → Firebase</p>
-
-    <div class="stat-grid">
-      <div class="stat-card">
-        <div class="stat-value" id="statTotal">0</div>
-        <div class="stat-label">Total Cards</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="statAvailable">0</div>
-        <div class="stat-label">Available</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="statRedeemed">0</div>
-        <div class="stat-label">Redeemed</div>
+    <div id="gate" style="display:none">
+      <div class="admin-gate card">
+        <h2 style="margin-bottom:12px">Admin only</h2>
+        <p class="text-muted mb-2" id="gateText">Sign in with an admin account to manage inventory.</p>
+        <a href="auth.html" class="btn btn-primary">Sign In</a>
       </div>
     </div>
 
-    <div class="admin-layout">
-      <div class="card">
-        <h2 style="margin-bottom:20px;font-size:1.15rem">Upload New Card</h2>
-        <form id="formUpload">
-          <div class="form-group">
-            <label>Card Name *</label>
-            <input type="text" class="form-control" id="cardName" required placeholder="e.g. Charizard VMAX" />
-          </div>
-          <div class="form-group">
-            <label>Grading Company *</label>
-            <select class="form-control" id="cardGrader" required>
-              <option value="PSA">PSA</option>
-              <option value="CGC">CGC</option>
-              <option value="BGS">BGS</option>
-              <option value="SGC">SGC</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Grade *</label>
-            <select class="form-control" id="cardGrade" required>
-              <option value="10">10</option>
-              <option value="9">9</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Serial / Cert Number *</label>
-            <input type="text" class="form-control" id="cardSerial" required placeholder="e.g. 12345678" />
-          </div>
-          <div class="form-group">
-            <label>Market Value (£) *</label>
-            <input type="number" class="form-control" id="cardMarket" required min="0" step="0.01" placeholder="e.g. 65" />
-          </div>
-          <div class="form-group">
-            <label>Card Image *</label>
-            <input type="file" class="form-control" id="cardImage" accept="image/*" required />
-            <img id="imgPreview" class="upload-preview" alt="Preview" />
-          </div>
-          <button type="submit" class="btn btn-primary w-full" id="btnUpload">Add to Inventory</button>
-        </form>
+    <div id="adminUI" style="display:none">
+      <h1 class="page-title">Admin Panel</h1>
+      <p class="page-sub">Images → Cloudinary · Card data → Firebase</p>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Total Cards</div></div>
+        <div class="stat-card"><div class="stat-value" id="statAvailable">0</div><div class="stat-label">Available</div></div>
+        <div class="stat-card"><div class="stat-value" id="statRedeemed">0</div><div class="stat-label">Redeemed</div></div>
       </div>
 
-      <div>
-        <div class="flex justify-between items-center mb-2" style="flex-wrap:wrap;gap:10px">
-          <h2 style="font-size:1.15rem">Inventory</h2>
-          <select class="form-control" id="filterStatus" style="width:auto;min-width:140px">
-            <option value="all">All status</option>
-            <option value="available">Available</option>
-            <option value="redeemed">Redeemed</option>
-          </select>
+      <div class="admin-layout">
+        <div class="card">
+          <h2 style="margin-bottom:20px;font-size:1.15rem">Upload New Card</h2>
+          <form id="formUpload">
+            <div class="form-group">
+              <label>Card Name *</label>
+              <input type="text" class="form-control" id="cardName" required placeholder="e.g. Charizard VMAX" />
+            </div>
+            <div class="form-group">
+              <label>Grading Company *</label>
+              <select class="form-control" id="cardGrader" required>
+                <option value="PSA">PSA</option>
+                <option value="CGC">CGC</option>
+                <option value="BGS">BGS</option>
+                <option value="SGC">SGC</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Grade *</label>
+              <select class="form-control" id="cardGrade" required>
+                <option value="10">10</option>
+                <option value="9">9</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Serial / Cert Number *</label>
+              <input type="text" class="form-control" id="cardSerial" required placeholder="e.g. 12345678" />
+            </div>
+            <div class="form-group">
+              <label>Market Value (£) *</label>
+              <input type="number" class="form-control" id="cardMarket" required min="0" step="0.01" placeholder="e.g. 65" />
+            </div>
+            <div class="form-group">
+              <label>Card Image *</label>
+              <input type="file" class="form-control" id="cardImage" accept="image/*" required />
+              <img id="imgPreview" class="upload-preview" alt="Preview" />
+            </div>
+            <button type="submit" class="btn btn-primary w-full" id="btnUpload">Add to Inventory</button>
+          </form>
         </div>
-        <div class="inv-table-wrap">
-          <table class="inv-table">
-            <thead>
-              <tr>
-                <th>Image</th>
-                <th>Card</th>
-                <th>Grade</th>
-                <th>Serial</th>
-                <th>Market</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="inventoryBody">
-              <tr><td colspan="7" class="text-center text-dim" style="padding:32px">Loading…</td></tr>
-            </tbody>
-          </table>
+
+        <div>
+          <div class="flex justify-between items-center mb-2" style="flex-wrap:wrap;gap:10px">
+            <h2 style="font-size:1.15rem">Inventory</h2>
+            <select class="form-control" id="filterStatus" style="width:auto;min-width:140px">
+              <option value="all">All status</option>
+              <option value="available">Available</option>
+              <option value="redeemed">Redeemed</option>
+            </select>
+          </div>
+          <div class="inv-table-wrap">
+            <table class="inv-table">
+              <thead>
+                <tr>
+                  <th>Image</th><th>Card</th><th>Grade</th><th>Serial</th><th>Market</th><th>Status</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="inventoryBody">
+                <tr><td colspan="7" class="text-center text-dim" style="padding:32px">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -216,183 +162,80 @@
   <script src="js/firebase-config.js"></script>
   <script src="js/nav.js"></script>
   <script>
-    var db = firebase.firestore();
-    var auth = firebase.auth();
-    var ADMIN_UIDS = (window.Kollect && window.Kollect.ADMIN_UIDS) || [];
-    var CLOUD_NAME = (window.Kollect && window.Kollect.CLOUDINARY_CLOUD_NAME) || '';
-    var UPLOAD_PRESET = (window.Kollect && window.Kollect.CLOUDINARY_UPLOAD_PRESET) || '';
-    var selectedFile = null;
-    var allCards = [];
+    var statusMsg = document.getElementById('statusMsg');
+    var gate = document.getElementById('gate');
+    var adminUI = document.getElementById('adminUI');
 
-    function showToast(msg) {
-      var t = document.getElementById('toast');
-      t.textContent = msg;
-      t.classList.add('show');
-      setTimeout(function () { t.classList.remove('show'); }, 2500);
+    function showStatus(text) {
+      statusMsg.textContent = text;
+      statusMsg.style.display = 'block';
+      gate.style.display = 'none';
+      adminUI.style.display = 'none';
     }
 
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    function showGate(text) {
+      statusMsg.style.display = 'none';
+      gate.style.display = 'block';
+      adminUI.style.display = 'none';
+      if (text) document.getElementById('gateText').textContent = text;
     }
 
-    function isAdminUser(user) {
-      return !!(user && ADMIN_UIDS.indexOf(user.uid) !== -1);
+    function showAdmin() {
+      statusMsg.style.display = 'none';
+      gate.style.display = 'none';
+      adminUI.style.display = 'block';
     }
 
-    auth.onAuthStateChanged(function (user) {
-      if (!user || !isAdminUser(user)) {
-        document.getElementById('gate').style.display = '';
-        document.getElementById('adminUI').style.display = 'none';
-        return;
-      }
-      document.getElementById('gate').style.display = 'none';
-      document.getElementById('adminUI').style.display = '';
-      listenInventory();
-    });
+    if (typeof firebase === 'undefined') {
+      showStatus('Firebase failed to load. Check that js/firebase-config.js exists and the script tags are correct.');
+    } else {
+      var db = firebase.firestore();
+      var auth = firebase.auth();
+      var ADMIN_UIDS = (window.Kollect && window.Kollect.ADMIN_UIDS) || [];
+      var CLOUD_NAME = (window.Kollect && window.Kollect.CLOUDINARY_CLOUD_NAME) || '';
+      var UPLOAD_PRESET = (window.Kollect && window.Kollect.CLOUDINARY_UPLOAD_PRESET) || '';
+      var selectedFile = null;
+      var allCards = [];
 
-    document.getElementById('cardImage').addEventListener('change', function (e) {
-      selectedFile = e.target.files[0] || null;
-      var img = document.getElementById('imgPreview');
-      if (!selectedFile) {
-        img.classList.remove('show');
-        return;
+      function showToast(msg) {
+        var t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(function () { t.classList.remove('show'); }, 2500);
       }
-      img.src = URL.createObjectURL(selectedFile);
-      img.classList.add('show');
-    });
 
-    function uploadToCloudinary(file) {
-      if (!CLOUD_NAME || !UPLOAD_PRESET) {
-        return Promise.reject(new Error('Cloudinary not configured'));
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       }
-      var url = 'https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/image/upload';
-      var fd = new FormData();
-      fd.append('file', file);
-      fd.append('upload_preset', UPLOAD_PRESET);
-      return fetch(url, { method: 'POST', body: fd }).then(function (res) {
-        return res.json().then(function (data) {
-          if (!res.ok) {
-            throw new Error(data.error && data.error.message ? data.error.message : 'Cloudinary upload failed');
-          }
-          return data.secure_url;
-        });
+
+      function isAdminUser(user) {
+        return !!(user && ADMIN_UIDS.indexOf(user.uid) !== -1);
+      }
+
+      auth.onAuthStateChanged(function (user) {
+        if (!user) {
+          showGate('You are not signed in. Sign in with your admin account.');
+          return;
+        }
+        if (!isAdminUser(user)) {
+          showGate('Signed in as ' + (user.email || user.uid) + ', but this account is not an admin.');
+          return;
+        }
+        showAdmin();
+        listenInventory();
       });
-    }
 
-    document.getElementById('formUpload').addEventListener('submit', function (e) {
-      e.preventDefault();
-      if (!selectedFile) {
-        alert('Please choose a card image.');
-        return;
-      }
-      var btn = document.getElementById('btnUpload');
-      btn.disabled = true;
-      btn.textContent = 'Uploading image…';
-
-      uploadToCloudinary(selectedFile)
-        .then(function (imageUrl) {
-          btn.textContent = 'Saving to Firebase…';
-          return db.collection('inventory').add({
-            name: document.getElementById('cardName').value.trim(),
-            grader: document.getElementById('cardGrader').value,
-            grade: Number(document.getElementById('cardGrade').value),
-            serial: document.getElementById('cardSerial').value.trim(),
-            market: Number(document.getElementById('cardMarket').value),
-            imageUrl: imageUrl,
-            status: 'available',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            redeemedAt: null,
-            redeemedBy: null
-          });
-        })
-        .then(function () {
-          e.target.reset();
-          selectedFile = null;
-          document.getElementById('imgPreview').classList.remove('show');
-          showToast('Card saved (Cloudinary + Firebase)');
-        })
-        .catch(function (err) {
-          alert('Failed: ' + err.message);
-        })
-        .finally(function () {
-          btn.disabled = false;
-          btn.textContent = 'Add to Inventory';
-        });
-    });
-
-    function listenInventory() {
-      db.collection('inventory').orderBy('createdAt', 'desc')
-        .onSnapshot(function (snap) {
-          allCards = [];
-          snap.forEach(function (doc) {
-            var d = doc.data();
-            d.id = doc.id;
-            allCards.push(d);
-          });
-          renderStats();
-          renderTable();
-        }, function (err) {
-          document.getElementById('inventoryBody').innerHTML =
-            '<tr><td colspan="7" class="text-center" style="padding:32px;color:#ef4444">' +
-            escapeHtml(err.message) + '</td></tr>';
-        });
-    }
-
-    function renderStats() {
-      document.getElementById('statTotal').textContent = allCards.length;
-      document.getElementById('statAvailable').textContent = allCards.filter(function (c) { return c.status === 'available'; }).length;
-      document.getElementById('statRedeemed').textContent = allCards.filter(function (c) { return c.status === 'redeemed'; }).length;
-    }
-
-    function renderTable() {
-      var filter = document.getElementById('filterStatus').value;
-      var list = filter === 'all' ? allCards : allCards.filter(function (c) { return c.status === filter; });
-      var tbody = document.getElementById('inventoryBody');
-      if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-dim" style="padding:32px">No cards yet.</td></tr>';
-        return;
-      }
-      tbody.innerHTML = list.map(function (c) {
-        var statusClass = c.status === 'available' ? 'badge-available' : 'badge-redeemed';
-        var statusLabel = c.status === 'available' ? 'Available' : 'Redeemed';
-        var actions = c.status === 'available'
-          ? '<button type="button" class="btn btn-secondary btn-sm" data-redeem="' + c.id + '">Mark redeemed</button> '
-          : '';
-        actions += '<button type="button" class="btn btn-secondary btn-sm" data-delete="' + c.id + '" style="color:#ef4444">Delete</button>';
-
-        return (
-          '<tr>' +
-            '<td><img src="' + (c.imageUrl || '') + '" alt="" /></td>' +
-            '<td><strong>' + escapeHtml(c.name) + '</strong></td>' +
-            '<td><span class="badge ' + (c.grade === 10 ? 'badge-10' : 'badge-9') + '">' +
-              escapeHtml(c.grader) + ' ' + c.grade + '</span></td>' +
-            '<td class="text-dim">' + escapeHtml(c.serial) + '</td>' +
-            '<td>£' + Number(c.market || 0).toFixed(2) + '</td>' +
-            '<td><span class="badge ' + statusClass + '">' + statusLabel + '</span></td>' +
-            '<td style="white-space:nowrap">' + actions + '</td>' +
-          '</tr>'
-        );
-      }).join('');
-
-      tbody.querySelectorAll('[data-redeem]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          db.collection('inventory').doc(btn.getAttribute('data-redeem')).update({
-            status: 'redeemed',
-            redeemedAt: firebase.firestore.FieldValue.serverTimestamp()
-          }).then(function () { showToast('Marked redeemed'); });
-        });
+      document.getElementById('cardImage').addEventListener('change', function (e) {
+        selectedFile = e.target.files[0] || null;
+        var img = document.getElementById('imgPreview');
+        if (!selectedFile) { img.classList.remove('show'); return; }
+        img.src = URL.createObjectURL(selectedFile);
+        img.classList.add('show');
       });
-      tbody.querySelectorAll('[data-delete]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          if (!confirm('Delete this card?')) return;
-          db.collection('inventory').doc(btn.getAttribute('data-delete')).delete()
-            .then(function () { showToast('Deleted'); });
-        });
-      });
-    }
 
-    document.getElementById('filterStatus').addEventListener('change', renderTable);
-  </script>
-</body>
-</html>
+      function uploadToCloudinary(file) {
+        if (!CLOUD_NAME || !UPLOAD_PRESET) {
+          return Promise.reject(new Error('Cloudinary not configured in firebase-config.js'));
+        }
+        var url =
