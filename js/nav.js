@@ -26,6 +26,33 @@
         menu.classList.remove('open');
       }
     });
+
+    // Update Sign In / Log Out based on auth state
+    updateAuthLink();
+  }
+
+  function updateAuthLink() {
+    if (typeof firebase === 'undefined' || !firebase.auth) return;
+
+    firebase.auth().onAuthStateChanged(function (user) {
+      var signInLink = document.querySelector('a[href="auth.html"]');
+      if (!signInLink) return;
+
+      if (user) {
+        signInLink.textContent = 'Log Out';
+        signInLink.href = '#';
+        signInLink.onclick = function (e) {
+          e.preventDefault();
+          firebase.auth().signOut().then(function () {
+            window.location.href = 'index.html';
+          });
+        };
+      } else {
+        signInLink.textContent = 'Sign In';
+        signInLink.href = 'auth.html';
+        signInLink.onclick = null;
+      }
+    });
   }
 
   if (document.readyState === 'loading') {
