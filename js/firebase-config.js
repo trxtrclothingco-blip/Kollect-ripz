@@ -9,7 +9,10 @@ const firebaseConfig = {
 
 const BUYBACK_PERCENT = 0.70;
 const PACK_PRICE = 25;
-const ADMIN_UIDS = [];
+
+const ADMIN_UIDS = [
+  "yhBQ8LdSfEYpp02KykaHG20eYLC2"
+];
 
 firebase.initializeApp(firebaseConfig);
 
