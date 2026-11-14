@@ -32,19 +32,19 @@
 
     <div class="stat-grid">
       <div class="stat-card">
-        <div class="stat-value">2</div>
+        <div class="stat-value" id="statOwned">0</div>
         <div class="stat-label">Cards Owned</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">£82</div>
+        <div class="stat-value" id="statLocked">£0.00</div>
         <div class="stat-label">Locked Buyback</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">3</div>
+        <div class="stat-value" id="statPacks">0</div>
         <div class="stat-label">Packs Opened</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">1</div>
+        <div class="stat-value" id="statConsigned">0</div>
         <div class="stat-label">Consigned</div>
       </div>
     </div>
@@ -61,8 +61,27 @@
 
       <div class="card">
         <h3 style="margin-bottom:12px">Account</h3>
-        <p class="text-muted mb-2">Sign in to sync your collection across devices and unlock buyback / consign.</p>
-        <button class="btn btn-secondary btn-sm">Sign In (coming soon)</button>
+
+        <div id="acctSignedOut">
+          <p class="text-muted mb-2">Sign in to sync your collection across devices and unlock buyback / consign.</p>
+          <a href="auth.html" class="btn btn-secondary btn-sm">Sign In</a>
+        </div>
+
+        <div id="acctSignedIn" style="display:none">
+          <div style="margin-bottom:14px">
+            <div style="font-weight:700" id="acctName">Collector</div>
+            <div class="text-dim" style="font-size:0.85rem" id="acctEmail"></div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border)">
+            <span class="text-muted">Total card value pulled</span>
+            <strong id="acctPulledValue">£0.00</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border)">
+            <span class="text-muted">Total cash from buybacks</span>
+            <strong id="acctCashValue" style="color:#10b981">£0.00</strong>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -87,5 +106,91 @@
 <script src="js/firebase-config.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/auth-menu.js"></script>
+<script>
+(function () {
+  var db = window.Kollect.db;
+  var auth = window.Kollect.auth;
+  var unsubscribe = null;
+
+  function money(n) {
+    return '£' + Number(n || 0).toFixed(2);
+  }
+
+  function setText(id, text) {
+    document.getElementById(id).textContent = text;
+  }
+
+  function resetStats() {
+    setText('statOwned', '0');
+    setText('statLocked', money(0));
+    setText('statPacks', '0');
+    setText('statConsigned', '0');
+    setText('acctPulledValue', money(0));
+    setText('acctCashValue', money(0));
+  }
+
+  // Every card in users/{uid}/collection is one opened pack.
+  // status: missing or 'owned' = still owned, 'cashed' = bought back, 'consigned' = consigned.
+  function updateStats(cards) {
+    var owned = 0;
+    var consigned = 0;
+    var lockedBuyback = 0;
+    var totalPulledValue = 0;
+    var totalCash = 0;
+
+    cards.forEach(function (c) {
+      var status = c.status || 'owned';
+
+      totalPulledValue += Number(c.market || 0);
+
+      if (status === 'cashed') {
+        totalCash += Number(c.buyback || 0);
+      } else if (status === 'consigned') {
+        consigned += 1;
+      } else {
+        owned += 1;
+        lockedBuyback += Number(c.buyback || 0);
+      }
+    });
+
+    setText('statOwned', String(owned));
+    setText('statLocked', money(lockedBuyback));
+    setText('statPacks', String(cards.length));
+    setText('statConsigned', String(consigned));
+    setText('acctPulledValue', money(totalPulledValue));
+    setText('acctCashValue', money(totalCash));
+  }
+
+  auth.onAuthStateChanged(function (user) {
+    if (unsubscribe) {
+      unsubscribe();
+      unsubscribe = null;
+    }
+
+    if (!user) {
+      document.getElementById('acctSignedOut').style.display = 'block';
+      document.getElementById('acctSignedIn').style.display = 'none';
+      resetStats();
+      return;
+    }
+
+    document.getElementById('acctSignedOut').style.display = 'none';
+    document.getElementById('acctSignedIn').style.display = 'block';
+    setText('acctName', user.displayName || 'Collector');
+    setText('acctEmail', user.email || '');
+
+    unsubscribe = db.collection('users').doc(user.uid).collection('collection')
+      .onSnapshot(function (snap) {
+        var cards = [];
+        snap.forEach(function (doc) {
+          cards.push(doc.data());
+        });
+        updateStats(cards);
+      }, function (err) {
+        console.error(err);
+      });
+  });
+})();
+</script>
 </body>
 </html>
