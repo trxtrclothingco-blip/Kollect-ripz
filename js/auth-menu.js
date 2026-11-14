@@ -18,6 +18,7 @@
 
         // Find the authentication link in the navigation
         var signInLink = document.querySelector(
+          '#navMenu a[href="auth.html"], #navMenu a[data-auth-link="true"], ' +
           '.nav-menu a[href="auth.html"], .nav-menu a[data-auth-link="true"]'
         );
 
