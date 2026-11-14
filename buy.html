@@ -306,6 +306,16 @@
         tx.update(invRef, { status: 'redeemed' });
         tx.set(ownRef, owned);
 
+        // Public feed entry (card details only, no user info)
+        tx.set(db.collection('pulls').doc(), {
+          name: owned.name,
+          grader: owned.grader,
+          grade: owned.grade,
+          market: owned.market,
+          imageUrl: owned.imageUrl,
+          pulledAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
         return owned;
       });
     }).then(function (result) {
