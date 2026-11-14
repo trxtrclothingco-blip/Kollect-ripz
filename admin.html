@@ -22,6 +22,38 @@
     .badge-redeemed { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
     .toast { position: fixed; bottom: 24px; right: 24px; background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--success); padding: 14px 18px; border-radius: 8px; z-index: 400; font-size: 0.9rem; display: none; }
     .toast.show { display: block; }
+
+    /* Burger menu mobile styles (added so toggle works) */
+    .burger {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 1.6rem;
+      cursor: pointer;
+      color: inherit;
+      padding: 4px 8px;
+    }
+    @media (max-width: 900px) {
+      .burger { display: block; }
+      .nav-inner { position: relative; }
+      .nav-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        background: var(--bg, #111);
+        border: 1px solid var(--border, #333);
+        border-radius: 8px;
+        padding: 12px 0;
+        z-index: 200;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      }
+      .nav-menu.open { display: flex; }
+      .nav-menu li { list-style: none; }
+      .nav-menu a { display: block; padding: 10px 16px; }
+    }
   </style>
 </head>
 <body>
@@ -150,7 +182,7 @@
 
     function uploadToCloudinary(file) {
       if (!CLOUD_NAME || !UPLOAD_PRESET) return Promise.reject(new Error('Cloudinary not configured'));
-      var url = 'https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/image/upload';
+      var url = 'https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '￼/upload';
       var fd = new FormData();
       fd.append('file', file);
       fd.append('upload_preset', UPLOAD_PRESET);
