@@ -226,6 +226,17 @@
   // TEMPORARY: shows any error as a popup. Delete this line once it works.
   window.addEventListener('error', function (e) { alert('Error: ' + e.message); });
 
+  var db = window.Kollect.db;
+  var auth = window.Kollect.auth;
+  var BUYBACK_PERCENT = window.Kollect.BUYBACK_PERCENT || 0.70;
+
+  var currentUser = null;
+  var busy = false;
+
+  auth.onAuthStateChanged(function (user) {
+    currentUser = user;
+  });
+
   function openOverlay(el) {
     el.classList.add('active');
     el.style.display = 'flex';
@@ -236,28 +247,81 @@
     el.style.display = 'none';
   }
 
-  // ===== CARD POOL (your images) =====
-  // Put these image files in the same folder as buy.html (or in /images/)
-  var CARD_POOL = [
-    { file: 'IMG_5657.jpeg', name: 'Mystery Graded Card', grade: 10, grader: 'PSA', market: 85 },
-    { file: 'IMG_5655.jpeg', name: 'Mystery Graded Card', grade: 9,  grader: 'CGC', market: 42 },
-    { file: 'IMG_5656.jpeg', name: 'Mystery Graded Card', grade: 10, grader: 'BGS', market: 70 },
-    { file: 'IMG_5311.jpeg', name: 'Mystery Graded Card', grade: 9,  grader: 'PSA', market: 38 },
-    { file: 'IMG_5319.jpeg', name: 'Mystery Graded Card', grade: 10, grader: 'PSA', market: 95 },
-    { file: 'IMG_5320.jpeg', name: 'Mystery Graded Card', grade: 9,  grader: 'CGC', market: 48 },
-    { file: 'IMG_5322.jpeg', name: 'Mystery Graded Card', grade: 10, grader: 'PSA', market: 62 }
-  ];
-
-  var BUYBACK_PERCENT = 0.70;
-
   // Elements
   var payOverlay    = document.getElementById('payOverlay');
   var videoOverlay  = document.getElementById('videoOverlay');
   var resultOverlay = document.getElementById('resultOverlay');
   var ripVideo      = document.getElementById('ripVideo');
 
-  // Open fake payment
+  // ===== REAL PULL FROM FIRESTORE =====
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  function pullCard(uid) {
+    return db.collection('inventory')
+      .where('status', '==', 'available')
+      .get()
+      .then(function (snap) {
+        var ids = [];
+        snap.forEach(function (d) { ids.push(d.id); });
+        if (!ids.length) throw new Error('SOLD_OUT');
+        shuffle(ids);
+        return tryClaim(ids, 0, uid);
+      });
+  }
+
+  // Claims one card inside a transaction. If someone else got it first,
+  // it moves on to the next card in the shuffled list.
+  function tryClaim(ids, i, uid) {
+    if (i >= ids.length) return Promise.reject(new Error('SOLD_OUT'));
+
+    var invRef = db.collection('inventory').doc(ids[i]);
+    var ownRef = db.collection('users').doc(uid).collection('collection').doc(ids[i]);
+
+    return db.runTransaction(function (tx) {
+      return tx.get(invRef).then(function (snap) {
+        if (!snap.exists || snap.data().status !== 'available') return null;
+
+        var c = snap.data();
+        var buyback = Math.round(Number(c.market || 0) * BUYBACK_PERCENT * 100) / 100;
+
+        var owned = {
+          inventoryId: ids[i],
+          name: c.name || 'Graded Card',
+          grader: c.grader || '',
+          grade: Number(c.grade) || 0,
+          serial: c.serial || '',
+          market: Number(c.market) || 0,
+          imageUrl: c.imageUrl || '',
+          buyback: buyback,
+          pulledAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        // Only "status" changes on the inventory card (matches your rules)
+        tx.update(invRef, { status: 'redeemed' });
+        tx.set(ownRef, owned);
+
+        return owned;
+      });
+    }).then(function (result) {
+      if (result) return result;
+      return tryClaim(ids, i + 1, uid);
+    });
+  }
+
+  // Open payment (must be signed in)
   document.getElementById('btnBuy').addEventListener('click', function () {
+    var user = currentUser || auth.currentUser;
+    if (!user) {
+      alert('Please sign in to buy a pack.');
+      window.location.href = 'auth.html';
+      return;
+    }
     openOverlay(payOverlay);
   });
 
@@ -265,21 +329,51 @@
     closeOverlay(payOverlay);
   });
 
-  // Pay Now → play video → reveal card
+  // Pay Now → pull card + play video → reveal card
   document.getElementById('btnPayNow').addEventListener('click', function () {
+    if (busy) return;
+
+    var user = currentUser || auth.currentUser;
+    if (!user) {
+      alert('Please sign in to buy a pack.');
+      window.location.href = 'auth.html';
+      return;
+    }
+
     closeOverlay(payOverlay);
-    startReveal();
+    startReveal(user.uid);
   });
 
-  function startReveal() {
+  function startReveal(uid) {
+    busy = true;
+
+    var pullPromise = pullCard(uid);
+
     openOverlay(videoOverlay);
     document.getElementById('videoStatus').textContent = 'Opening your pack...';
 
     var done = false;
+
+    // If the pull fails, stop everything and tell the user
+    pullPromise.catch(function (err) {
+      done = true;
+      try { ripVideo.pause(); } catch (e) {}
+      closeOverlay(videoOverlay);
+      busy = false;
+      if (err && err.message === 'SOLD_OUT') {
+        alert('Sorry, there are no cards available right now.');
+      } else {
+        alert('Could not open your pack: ' + (err && err.message ? err.message : err));
+      }
+    });
+
     function finishVideo() {
       if (done) return;
       done = true;
-      showRandomCard();
+      pullPromise.then(function (card) {
+        showCard(card);
+        busy = false;
+      });
     }
 
     try {
@@ -300,56 +394,20 @@
     setTimeout(finishVideo, 12000);
   }
 
-  function showRandomCard() {
+  function showCard(card) {
     closeOverlay(videoOverlay);
     try { ripVideo.pause(); } catch (e) {}
 
-    // Pick random card
-    var card = CARD_POOL[Math.floor(Math.random() * CARD_POOL.length)];
-    var buyback = Math.round(card.market * BUYBACK_PERCENT * 100) / 100;
-
-    // Fill result UI
-    var img = document.getElementById('resultImg');
-    img.onerror = function () {
-      this.onerror = null;
-      // Try .JPG if the file name fails
-      var base = card.file.replace(/\.(jpg|jpeg|png|JPG|JPEG|PNG)$/, '');
-      this.src = base + '.JPG';
-    };
-    img.src = card.file;
-
+    document.getElementById('resultImg').src = card.imageUrl;
     document.getElementById('resultName').textContent = card.name;
     document.getElementById('resultMeta').textContent = card.grader + ' ' + card.grade + ' · Market £' + card.market;
-    document.getElementById('resultBuyback').textContent = 'Locked buyback: £' + buyback.toFixed(2);
+    document.getElementById('resultBuyback').textContent = 'Locked buyback: £' + card.buyback.toFixed(2);
 
     var badge = document.getElementById('resultBadge');
     badge.textContent = card.grader + ' ' + card.grade;
     badge.className = 'badge ' + (card.grade === 10 ? 'badge-10' : 'badge-9');
 
-    // Save to user vault (localStorage)
-    saveToVault({
-      id: Date.now().toString(),
-      file: card.file,
-      name: card.name,
-      grade: card.grade,
-      grader: card.grader,
-      market: card.market,
-      buyback: buyback,
-      pulledAt: new Date().toISOString()
-    });
-
     openOverlay(resultOverlay);
-  }
-
-  function saveToVault(card) {
-    var vault = [];
-    try {
-      vault = JSON.parse(localStorage.getItem('kollectVault') || '[]');
-    } catch (e) {}
-    vault.unshift(card);
-    try {
-      localStorage.setItem('kollectVault', JSON.stringify(vault));
-    } catch (e) {}
   }
 
   document.getElementById('btnCloseResult').addEventListener('click', function () {
@@ -359,4 +417,3 @@
 </script>
 </body>
 </html>
-
