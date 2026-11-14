@@ -81,6 +81,43 @@
             <span class="text-muted">Total cash from buybacks</span>
             <strong id="acctCashValue" style="color:#10b981">£0.00</strong>
           </div>
+
+          <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:16px">
+            <h4 style="margin-bottom:4px">Delivery &amp; contact details</h4>
+            <p class="text-dim" style="font-size:0.82rem;margin-bottom:14px">
+              Used to post your pulled cards to you.
+            </p>
+
+            <form id="formContact">
+              <div class="form-group">
+                <label>Contact email</label>
+                <input type="email" class="form-control" id="cEmail" required placeholder="you@email.com" />
+              </div>
+              <div class="form-group">
+                <label>Phone number</label>
+                <input type="tel" class="form-control" id="cPhone" required placeholder="07123 456789" />
+              </div>
+              <div class="form-group">
+                <label>Address line 1</label>
+                <input type="text" class="form-control" id="cAddress1" required placeholder="House number and street" />
+              </div>
+              <div class="form-group">
+                <label>Address line 2 (optional)</label>
+                <input type="text" class="form-control" id="cAddress2" placeholder="Flat, building, area" />
+              </div>
+              <div class="form-group">
+                <label>Town / City</label>
+                <input type="text" class="form-control" id="cCity" required placeholder="Town or city" />
+              </div>
+              <div class="form-group">
+                <label>Postcode</label>
+                <input type="text" class="form-control" id="cPostcode" required placeholder="e.g. AB1 2CD" />
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-sm w-full" id="btnSaveContact">Save details</button>
+              <p id="contactMsg" style="font-size:0.85rem;margin-top:10px;display:none"></p>
+            </form>
+          </div>
         </div>
       </div>
     </div>
@@ -161,6 +198,74 @@
     setText('acctCashValue', money(totalCash));
   }
 
+  // ===== CONTACT / DELIVERY DETAILS =====
+  var formContact = document.getElementById('formContact');
+  var contactMsg = document.getElementById('contactMsg');
+
+  function showContactMsg(text, ok) {
+    contactMsg.textContent = text;
+    contactMsg.style.color = ok ? '#10b981' : '#ef4444';
+    contactMsg.style.display = text ? 'block' : 'none';
+  }
+
+  function clearContactForm() {
+    formContact.reset();
+    showContactMsg('', true);
+  }
+
+  function loadContact(user) {
+    db.collection('users').doc(user.uid).get()
+      .then(function (doc) {
+        var d = doc.exists ? doc.data() : {};
+        document.getElementById('cEmail').value = d.contactEmail || user.email || '';
+        document.getElementById('cPhone').value = d.phone || '';
+        document.getElementById('cAddress1').value = d.addressLine1 || '';
+        document.getElementById('cAddress2').value = d.addressLine2 || '';
+        document.getElementById('cCity').value = d.city || '';
+        document.getElementById('cPostcode').value = d.postcode || '';
+      })
+      .catch(function (err) {
+        console.error(err);
+        showContactMsg('Could not load your details: ' + err.message, false);
+      });
+  }
+
+  formContact.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    var user = auth.currentUser;
+    if (!user) {
+      showContactMsg('Please sign in first.', false);
+      return;
+    }
+
+    var btn = document.getElementById('btnSaveContact');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    showContactMsg('', true);
+
+    db.collection('users').doc(user.uid).set({
+      contactEmail: document.getElementById('cEmail').value.trim(),
+      phone: document.getElementById('cPhone').value.trim(),
+      addressLine1: document.getElementById('cAddress1').value.trim(),
+      addressLine2: document.getElementById('cAddress2').value.trim(),
+      city: document.getElementById('cCity').value.trim(),
+      postcode: document.getElementById('cPostcode').value.trim().toUpperCase(),
+      detailsUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true })
+      .then(function () {
+        showContactMsg('Details saved.', true);
+      })
+      .catch(function (err) {
+        console.error(err);
+        showContactMsg('Could not save: ' + err.message, false);
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'Save details';
+      });
+  });
+
   auth.onAuthStateChanged(function (user) {
     if (unsubscribe) {
       unsubscribe();
@@ -171,6 +276,7 @@
       document.getElementById('acctSignedOut').style.display = 'block';
       document.getElementById('acctSignedIn').style.display = 'none';
       resetStats();
+      clearContactForm();
       return;
     }
 
@@ -178,6 +284,8 @@
     document.getElementById('acctSignedIn').style.display = 'block';
     setText('acctName', user.displayName || 'Collector');
     setText('acctEmail', user.email || '');
+
+    loadContact(user);
 
     unsubscribe = db.collection('users').doc(user.uid).collection('collection')
       .onSnapshot(function (snap) {
