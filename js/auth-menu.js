@@ -1,4 +1,3 @@
-
 /* Kollect Vault - Global Authentication Navigation
    Updates Sign In to Log Out across all pages.
    Separate from nav.js to protect burger menu functionality.
