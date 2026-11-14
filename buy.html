@@ -98,6 +98,7 @@
         <li><a href="collection.html">My Collection</a></li>
         <li><a href="dashboard.html">Dashboard</a></li>
         <li><a href="admin.html">Admin</a></li>
+        <li><a href="auth.html">Sign In</a></li>
       </ul>
     </div>
   </nav>
@@ -220,119 +221,142 @@
 <script src="js/firebase-config.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/auth-menu.js"></script>
-  <script>
-    // ===== CARD POOL (your images) =====
-    // Put these image files in the same folder as buy.html (or in /images/)
-    var CARD_POOL = [
-      { file: 'IMG_5657.jpeg', name: 'Mystery Graded Card', grade: 10, grader: 'PSA', market: 85 },
-      { file: 'IMG_5655.jpeg', name: 'Mystery Graded Card', grade: 9,  grader: 'CGC', market: 42 },
-      { file: 'IMG_5656.jpeg', name: 'Mystery Graded Card', grade: 10, grader: 'BGS', market: 70 },
-      { file: 'IMG_5311.jpeg', name: 'Mystery Graded Card', grade: 9,  grader: 'PSA', market: 38 },
-      { file: 'IMG_5319.jpeg', name: 'Mystery Graded Card', grade: 10, grader: 'PSA', market: 95 },
-      { file: 'IMG_5320.jpeg', name: 'Mystery Graded Card', grade: 9,  grader: 'CGC', market: 48 },
-      { file: 'IMG_5322.jpeg', name: 'Mystery Graded Card', grade: 10, grader: 'PSA', market: 62 }
-    ];
+<script>
+(function () {
+  // TEMPORARY: shows any error as a popup. Delete this line once it works.
+  window.addEventListener('error', function (e) { alert('Error: ' + e.message); });
 
-    var BUYBACK_PERCENT = 0.70;
+  function openOverlay(el) {
+    el.classList.add('active');
+    el.style.display = 'flex';
+    el.style.zIndex = '9999';
+  }
+  function closeOverlay(el) {
+    el.classList.remove('active');
+    el.style.display = 'none';
+  }
 
-    // Elements
-    var payOverlay    = document.getElementById('payOverlay');
-    var videoOverlay  = document.getElementById('videoOverlay');
-    var resultOverlay = document.getElementById('resultOverlay');
-    var ripVideo      = document.getElementById('ripVideo');
+  // ===== CARD POOL (your images) =====
+  // Put these image files in the same folder as buy.html (or in /images/)
+  var CARD_POOL = [
+    { file: 'IMG_5657.jpeg', name: 'Mystery Graded Card', grade: 10, grader: 'PSA', market: 85 },
+    { file: 'IMG_5655.jpeg', name: 'Mystery Graded Card', grade: 9,  grader: 'CGC', market: 42 },
+    { file: 'IMG_5656.jpeg', name: 'Mystery Graded Card', grade: 10, grader: 'BGS', market: 70 },
+    { file: 'IMG_5311.jpeg', name: 'Mystery Graded Card', grade: 9,  grader: 'PSA', market: 38 },
+    { file: 'IMG_5319.jpeg', name: 'Mystery Graded Card', grade: 10, grader: 'PSA', market: 95 },
+    { file: 'IMG_5320.jpeg', name: 'Mystery Graded Card', grade: 9,  grader: 'CGC', market: 48 },
+    { file: 'IMG_5322.jpeg', name: 'Mystery Graded Card', grade: 10, grader: 'PSA', market: 62 }
+  ];
 
-    // Open fake payment
-    document.getElementById('btnBuy').addEventListener('click', function () {
-      payOverlay.classList.add('active');
-    });
+  var BUYBACK_PERCENT = 0.70;
 
-    document.getElementById('payClose').addEventListener('click', function () {
-      payOverlay.classList.remove('active');
-    });
+  // Elements
+  var payOverlay    = document.getElementById('payOverlay');
+  var videoOverlay  = document.getElementById('videoOverlay');
+  var resultOverlay = document.getElementById('resultOverlay');
+  var ripVideo      = document.getElementById('ripVideo');
 
-    // Pay Now → play video → reveal card
-    document.getElementById('btnPayNow').addEventListener('click', function () {
-      payOverlay.classList.remove('active');
-      startReveal();
-    });
+  // Open fake payment
+  document.getElementById('btnBuy').addEventListener('click', function () {
+    openOverlay(payOverlay);
+  });
 
-    function startReveal() {
-      videoOverlay.classList.add('active');
-      document.getElementById('videoStatus').textContent = 'Opening your pack...';
+  document.getElementById('payClose').addEventListener('click', function () {
+    closeOverlay(payOverlay);
+  });
 
-      // Reset and play video
+  // Pay Now → play video → reveal card
+  document.getElementById('btnPayNow').addEventListener('click', function () {
+    closeOverlay(payOverlay);
+    startReveal();
+  });
+
+  function startReveal() {
+    openOverlay(videoOverlay);
+    document.getElementById('videoStatus').textContent = 'Opening your pack...';
+
+    var done = false;
+    function finishVideo() {
+      if (done) return;
+      done = true;
+      showRandomCard();
+    }
+
+    try {
       ripVideo.currentTime = 0;
       var playPromise = ripVideo.play();
-
       if (playPromise !== undefined) {
         playPromise.catch(function () {
           // Autoplay blocked — skip to card after short delay
-          setTimeout(showRandomCard, 1500);
+          setTimeout(finishVideo, 1500);
         });
       }
-
-      // When video ends (or after max 12s fallback)
-      var done = false;
-      function finishVideo() {
-        if (done) return;
-        done = true;
-        showRandomCard();
-      }
-
-      ripVideo.onended = finishVideo;
-      setTimeout(finishVideo, 12000);
+    } catch (e) {
+      setTimeout(finishVideo, 1500);
     }
 
-    function showRandomCard() {
-      videoOverlay.classList.remove('active');
-      ripVideo.pause();
+    // When video ends (or after max 12s fallback)
+    ripVideo.onended = finishVideo;
+    setTimeout(finishVideo, 12000);
+  }
 
-      // Pick random card
-      var card = CARD_POOL[Math.floor(Math.random() * CARD_POOL.length)];
-      var buyback = Math.round(card.market * BUYBACK_PERCENT * 100) / 100;
+  function showRandomCard() {
+    closeOverlay(videoOverlay);
+    try { ripVideo.pause(); } catch (e) {}
 
-      // Fill result UI
-      document.getElementById('resultImg').src = card.file;
-      document.getElementById('resultImg').onerror = function () {
-        // Try .JPG / .jpeg / .png if .jpg fails
-        var base = card.file.replace(/\.(jpg|jpeg|png|JPG|JPEG|PNG)$/, '');
-        this.src = base + '.JPG';
-      };
-      document.getElementById('resultName').textContent = card.name;
-      document.getElementById('resultMeta').textContent = card.grader + ' ' + card.grade + ' · Market £' + card.market;
-      document.getElementById('resultBuyback').textContent = 'Locked buyback: £' + buyback.toFixed(2);
+    // Pick random card
+    var card = CARD_POOL[Math.floor(Math.random() * CARD_POOL.length)];
+    var buyback = Math.round(card.market * BUYBACK_PERCENT * 100) / 100;
 
-      var badge = document.getElementById('resultBadge');
-      badge.textContent = card.grader + ' ' + card.grade;
-      badge.className = 'badge ' + (card.grade === 10 ? 'badge-10' : 'badge-9');
+    // Fill result UI
+    var img = document.getElementById('resultImg');
+    img.onerror = function () {
+      this.onerror = null;
+      // Try .JPG if the file name fails
+      var base = card.file.replace(/\.(jpg|jpeg|png|JPG|JPEG|PNG)$/, '');
+      this.src = base + '.JPG';
+    };
+    img.src = card.file;
 
-      // Save to user vault (localStorage)
-      saveToVault({
-        id: Date.now().toString(),
-        file: card.file,
-        name: card.name,
-        grade: card.grade,
-        grader: card.grader,
-        market: card.market,
-        buyback: buyback,
-        pulledAt: new Date().toISOString()
-      });
+    document.getElementById('resultName').textContent = card.name;
+    document.getElementById('resultMeta').textContent = card.grader + ' ' + card.grade + ' · Market £' + card.market;
+    document.getElementById('resultBuyback').textContent = 'Locked buyback: £' + buyback.toFixed(2);
 
-      resultOverlay.classList.add('active');
-    }
+    var badge = document.getElementById('resultBadge');
+    badge.textContent = card.grader + ' ' + card.grade;
+    badge.className = 'badge ' + (card.grade === 10 ? 'badge-10' : 'badge-9');
 
-    function saveToVault(card) {
-      var vault = [];
-      try {
-        vault = JSON.parse(localStorage.getItem('kollectVault') || '[]');
-      } catch (e) {}
-      vault.unshift(card);
-      localStorage.setItem('kollectVault', JSON.stringify(vault));
-    }
-
-    document.getElementById('btnCloseResult').addEventListener('click', function () {
-      resultOverlay.classList.remove('active');
+    // Save to user vault (localStorage)
+    saveToVault({
+      id: Date.now().toString(),
+      file: card.file,
+      name: card.name,
+      grade: card.grade,
+      grader: card.grader,
+      market: card.market,
+      buyback: buyback,
+      pulledAt: new Date().toISOString()
     });
-  </script>
+
+    openOverlay(resultOverlay);
+  }
+
+  function saveToVault(card) {
+    var vault = [];
+    try {
+      vault = JSON.parse(localStorage.getItem('kollectVault') || '[]');
+    } catch (e) {}
+    vault.unshift(card);
+    try {
+      localStorage.setItem('kollectVault', JSON.stringify(vault));
+    } catch (e) {}
+  }
+
+  document.getElementById('btnCloseResult').addEventListener('click', function () {
+    closeOverlay(resultOverlay);
+  });
+})();
+</script>
 </body>
 </html>
+
