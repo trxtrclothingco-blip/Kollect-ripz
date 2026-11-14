@@ -29,48 +29,10 @@
     <h1 class="page-title">Recent Pulls</h1>
     <p class="page-sub">Public feed of every pack opened. User data is hidden.</p>
 
-    <div id="pullsList">
+    <div id="pullsList"></div>
 
-      <div class="pull-item">
-        <img src="https://via.placeholder.com/52x72/1a1d27/8b5cf6?text=Card" alt="Card" />
-        <div style="flex:1">
-          <div class="pull-name">Charizard VMAX</div>
-          <div class="pull-meta">
-            <span class="badge badge-10">PSA 10</span>
-            &nbsp;·&nbsp; 2 hours ago
-          </div>
-        </div>
-        <div class="text-dim" style="font-size:0.85rem">£85 mkt</div>
-      </div>
-
-      <div class="pull-item">
-        <img src="https://via.placeholder.com/52x72/1a1d27/94a3b8?text=Card" alt="Card" />
-        <div style="flex:1">
-          <div class="pull-name">Pikachu V</div>
-          <div class="pull-meta">
-            <span class="badge badge-9">CGC 9</span>
-            &nbsp;·&nbsp; 5 hours ago
-          </div>
-        </div>
-        <div class="text-dim" style="font-size:0.85rem">£32 mkt</div>
-      </div>
-
-      <div class="pull-item">
-        <img src="https://via.placeholder.com/52x72/1a1d27/8b5cf6?text=Card" alt="Card" />
-        <div style="flex:1">
-          <div class="pull-name">Mewtwo GX</div>
-          <div class="pull-meta">
-            <span class="badge badge-10">BGS 10</span>
-            &nbsp;·&nbsp; Yesterday
-          </div>
-        </div>
-        <div class="text-dim" style="font-size:0.85rem">£64 mkt</div>
-      </div>
-
-    </div>
-
-    <p class="text-dim text-center mt-3" style="font-size:0.85rem">
-      Connect Firebase to show live pulls from your inventory.
+    <p class="text-dim text-center mt-3" id="pullsNote" style="font-size:0.85rem">
+      Loading recent pulls...
     </p>
   </div>
 
@@ -85,5 +47,76 @@
 <script src="js/firebase-config.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/auth-menu.js"></script>
+<script>
+(function () {
+  var db = window.Kollect.db;
+
+  var list = document.getElementById('pullsList');
+  var note = document.getElementById('pullsNote');
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function timeAgo(ts) {
+    if (!ts || !ts.toDate) return 'Just now';
+
+    var secs = Math.floor((Date.now() - ts.toDate().getTime()) / 1000);
+    if (secs < 60) return 'Just now';
+
+    var mins = Math.floor(secs / 60);
+    if (mins < 60) return mins + (mins === 1 ? ' minute ago' : ' minutes ago');
+
+    var hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + (hours === 1 ? ' hour ago' : ' hours ago');
+
+    var days = Math.floor(hours / 24);
+    if (days === 1) return 'Yesterday';
+    return days + ' days ago';
+  }
+
+  db.collection('pulls')
+    .orderBy('pulledAt', 'desc')
+    .limit(50)
+    .onSnapshot(function (snap) {
+      var pulls = [];
+      snap.forEach(function (doc) {
+        pulls.push(doc.data());
+      });
+
+      if (!pulls.length) {
+        list.innerHTML = '';
+        note.textContent = 'No pulls yet. Be the first to open a pack.';
+        return;
+      }
+
+      note.textContent = '';
+
+      list.innerHTML = pulls.map(function (p) {
+        return '<div class="pull-item">' +
+          '<img src="' + escapeHtml(p.imageUrl) + '" alt="Card" />' +
+          '<div style="flex:1">' +
+            '<div class="pull-name">' + escapeHtml(p.name) + '</div>' +
+            '<div class="pull-meta">' +
+              '<span class="badge ' + (p.grade === 10 ? 'badge-10' : 'badge-9') + '">' +
+                escapeHtml(p.grader) + ' ' + escapeHtml(p.grade) +
+              '</span>' +
+              '&nbsp;·&nbsp; ' + timeAgo(p.pulledAt) +
+            '</div>' +
+          '</div>' +
+          '<div class="text-dim" style="font-size:0.85rem">£' + Number(p.market || 0).toFixed(2) + ' mkt</div>' +
+        '</div>';
+      }).join('');
+    }, function (err) {
+      console.error(err);
+      note.textContent = 'Could not load pulls: ' + err.message;
+    });
+})();
+</script>
 </body>
 </html>
