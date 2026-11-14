@@ -30,42 +30,10 @@
     <h1 class="page-title">My Collection</h1>
     <p class="page-sub">Cards you’ve pulled. Sell now or take the locked cash offer.</p>
 
-    <div class="grid-3" id="collectionGrid">
+    <div class="grid-3" id="collectionGrid"></div>
 
-      <div class="card-item">
-        <img src="https://via.placeholder.com/280x392/1a1d27/8b5cf6?text=Charizard" alt="Charizard VMAX" />
-        <div class="card-item-body">
-          <div class="card-item-name">Charizard VMAX</div>
-          <div class="mb-2">
-            <span class="badge badge-10">PSA 10</span>
-          </div>
-          <p class="text-dim" style="font-size:0.82rem;margin-bottom:10px">Locked buyback: £59.50</p>
-          <div class="flex gap-2" style="flex-wrap:wrap">
-            <button class="btn btn-success btn-sm">Cash £59.50</button>
-            <button class="btn btn-primary btn-sm">Sell with Kollect</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card-item">
-        <img src="https://via.placeholder.com/280x392/1a1d27/94a3b8?text=Pikachu" alt="Pikachu V" />
-        <div class="card-item-body">
-          <div class="card-item-name">Pikachu V</div>
-          <div class="mb-2">
-            <span class="badge badge-9">CGC 9</span>
-          </div>
-          <p class="text-dim" style="font-size:0.82rem;margin-bottom:10px">Locked buyback: £22.40</p>
-          <div class="flex gap-2" style="flex-wrap:wrap">
-            <button class="btn btn-success btn-sm">Cash £22.40</button>
-            <button class="btn btn-primary btn-sm">Sell with Kollect</button>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <p class="text-dim text-center mt-3" style="font-size:0.85rem">
-      Connect Firebase Auth + Firestore to load each user’s real collection.
+    <p class="text-dim text-center mt-3" id="collectionNote" style="font-size:0.85rem">
+      Loading your collection...
     </p>
   </div>
 
@@ -80,5 +48,83 @@
 <script src="js/firebase-config.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/auth-menu.js"></script>
+<script>
+(function () {
+  var db = window.Kollect.db;
+  var auth = window.Kollect.auth;
+
+  var grid = document.getElementById('collectionGrid');
+  var note = document.getElementById('collectionNote');
+  var unsubscribe = null;
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderCards(cards) {
+    if (!cards.length) {
+      grid.innerHTML = '';
+      note.textContent = 'No cards yet. Buy a pack to start your collection.';
+      return;
+    }
+
+    note.textContent = '';
+
+    grid.innerHTML = cards.map(function (c) {
+      var buyback = Number(c.buyback || 0).toFixed(2);
+
+      return '<div class="card-item">' +
+        '<img src="' + escapeHtml(c.imageUrl) + '" alt="' + escapeHtml(c.name) + '" />' +
+        '<div class="card-item-body">' +
+          '<div class="card-item-name">' + escapeHtml(c.name) + '</div>' +
+          '<div class="mb-2">' +
+            '<span class="badge ' + (c.grade === 10 ? 'badge-10' : 'badge-9') + '">' +
+              escapeHtml(c.grader) + ' ' + escapeHtml(c.grade) +
+            '</span>' +
+          '</div>' +
+          '<p class="text-dim" style="font-size:0.82rem;margin-bottom:10px">Locked buyback: £' + buyback + '</p>' +
+          '<div class="flex gap-2" style="flex-wrap:wrap">' +
+            '<button class="btn btn-success btn-sm">Cash £' + buyback + '</button>' +
+            '<button class="btn btn-primary btn-sm">Sell with Kollect</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  auth.onAuthStateChanged(function (user) {
+    if (unsubscribe) {
+      unsubscribe();
+      unsubscribe = null;
+    }
+
+    if (!user) {
+      grid.innerHTML = '';
+      note.innerHTML = 'Please <a href="auth.html">sign in</a> to see your collection.';
+      return;
+    }
+
+    note.textContent = 'Loading your collection...';
+
+    unsubscribe = db.collection('users').doc(user.uid).collection('collection')
+      .orderBy('pulledAt', 'desc')
+      .onSnapshot(function (snap) {
+        var cards = [];
+        snap.forEach(function (doc) {
+          cards.push(doc.data());
+        });
+        renderCards(cards);
+      }, function (err) {
+        console.error(err);
+        note.textContent = 'Could not load your collection: ' + err.message;
+      });
+  });
+})();
+</script>
 </body>
 </html>
