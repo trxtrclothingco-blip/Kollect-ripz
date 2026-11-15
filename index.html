@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
   <style>
-    /* What can you pull - hits showcase (new) */
+    /* What can you pull - grails showcase */
     .hv-section { margin-bottom: 32px; }
     .hv-section > h2 { text-align: center; margin-bottom: 6px; }
     .hv-section > p { text-align: center; color: #6b7280; font-size: 0.9rem; margin-bottom: 18px; }
@@ -48,6 +48,19 @@
       padding: 10px;
       text-align: center;
       min-width: 0;
+      position: relative;
+    }
+    .hv-item .hv-rank {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      z-index: 1;
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
     }
     .hv-item img {
       display: block;
@@ -99,10 +112,10 @@
       <a href="buy.html" class="btn btn-primary btn-lg">Open a Pack </a>
     </div>
 
-    <!-- WHAT CAN YOU PULL (new) -->
+    <!-- WHAT CAN YOU PULL: top 10 grails in each box -->
     <div class="hv-section">
       <h2>What can you pull?</h2>
-      <p>Hits and grails still in the vault. Redeemed cards disappear.</p>
+      <p>The top 10 grails still in the vault. Redeemed cards disappear.</p>
 
       <div class="hv-grid">
         <div class="hv-box">
@@ -160,17 +173,27 @@
 <script src="js/nav.js"></script>
 <script src="js/auth-menu.js"></script>
 
-<!-- Hits showcase (new) -->
+<!-- Grails showcase: live top 10 most valuable available cards in each box -->
 <script>
 (function () {
-  var HITS_TO_SHOW = 10; // top cards by market value
-
+  var TOP_N = 10;
   if (!window.Kollect || !window.Kollect.db) return;
   var db = window.Kollect.db;
 
-  function buildItem(c, isRaw) {
+  // Handles numbers or text like "£1,250.50"
+  function val(v) {
+    if (typeof v === 'number') return v;
+    var n = parseFloat(String(v || '').replace(/[^0-9.]/g, ''));
+    return isNaN(n) ? 0 : n;
+  }
+
+  function build(c, rank, isRaw) {
     var item = document.createElement('div');
     item.className = 'hv-item';
+
+    var r = document.createElement('span');
+    r.className = 'hv-rank';
+    r.textContent = '#' + rank;
 
     var img = document.createElement('img');
     img.src = c.imageUrl || '';
@@ -187,8 +210,9 @@
 
     var market = document.createElement('div');
     market.className = 'hv-market';
-    market.textContent = 'Market £' + (Number(c.market) || 0);
+    market.textContent = 'Market £' + val(c.market);
 
+    item.appendChild(r);
     item.appendChild(img);
     item.appendChild(badge);
     item.appendChild(name);
@@ -196,8 +220,8 @@
     return item;
   }
 
-  // Live list of the highest value cards that are still available (unredeemed)
-  function loadHits(collName, trackId, isRaw) {
+  // Live listener: re-ranks whenever a card is added, removed or redeemed
+  function watch(collName, trackId, isRaw) {
     var track = document.getElementById(trackId);
     if (!track) return;
 
@@ -205,11 +229,9 @@
       .where('status', '==', 'available')
       .onSnapshot(function (snap) {
         var cards = [];
-        snap.forEach(function (doc) { cards.push(doc.data()); });
+        snap.forEach(function (d) { cards.push(d.data()); });
 
-        cards.sort(function (a, b) {
-          return (Number(b.market) || 0) - (Number(a.market) || 0);
-        });
+        cards.sort(function (a, b) { return val(b.market) - val(a.market); });
 
         track.innerHTML = '';
 
@@ -218,17 +240,17 @@
           return;
         }
 
-        cards.slice(0, HITS_TO_SHOW).forEach(function (c) {
-          track.appendChild(buildItem(c, isRaw));
+        cards.slice(0, TOP_N).forEach(function (c, i) {
+          track.appendChild(build(c, i + 1, isRaw));
         });
       }, function (err) {
-        console.warn('Hits failed:', err);
-        track.innerHTML = '<p class="hv-empty">Hits unavailable.</p>';
+        console.warn('Grails failed:', err);
+        track.innerHTML = '<p class="hv-empty">Unavailable.</p>';
       });
   }
 
-  loadHits('rawInventory', 'rawHitsTrack', true);
-  loadHits('inventory', 'gradedHitsTrack', false);
+  watch('rawInventory', 'rawHitsTrack', true);
+  watch('inventory', 'gradedHitsTrack', false);
 })();
 </script>
 </body>
