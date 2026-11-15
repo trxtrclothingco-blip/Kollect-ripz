@@ -83,6 +83,48 @@
       from { transform: scale(0.75); opacity: 0; }
       to   { transform: scale(1); opacity: 1; }
     }
+
+    /* Recent pulls showcase (new) */
+    .pulls-showcase { margin-top: 24px; padding-top: 20px; border-top: 1px solid #2a2f3d; }
+    .pulls-showcase h3 { font-size: 1rem; margin-bottom: 12px; }
+    .pulls-track {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 8px;
+    }
+    .pulls-track::-webkit-scrollbar { height: 6px; }
+    .pulls-track::-webkit-scrollbar-thumb { background: #2a2f3d; border-radius: 3px; }
+    .pull-item {
+      flex: 0 0 calc((100% - 24px) / 3);
+      scroll-snap-align: start;
+      background: #0f1117;
+      border: 1px solid #2a2f3d;
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      min-width: 0;
+    }
+    .pull-item img {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      object-fit: contain;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      background: #000;
+    }
+    .pull-item .pull-name {
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-top: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pull-item .pull-market { font-size: 0.75rem; color: #6b7280; }
+    .pulls-empty { color: #6b7280; font-size: 0.85rem; }
   </style>
 </head>
 <body>
@@ -122,6 +164,14 @@
         </ul>
         <button class="btn btn-primary btn-lg w-full" id="btnBuy">Purchase for £25</button>
         <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
+
+        <!-- Recent pulls showcase (new) -->
+        <div class="pulls-showcase">
+          <h3>Recent Pulls</h3>
+          <div class="pulls-track" id="pullsTrack">
+            <p class="pulls-empty">Loading recent pulls...</p>
+          </div>
+        </div>
       </div>
 
       <div>
@@ -423,6 +473,59 @@
   document.getElementById('btnCloseResult').addEventListener('click', function () {
     closeOverlay(resultOverlay);
   });
+})();
+</script>
+
+<!-- Recent pulls showcase (new) -->
+<script>
+(function () {
+  var track = document.getElementById('pullsTrack');
+  if (!track || !window.Kollect || !window.Kollect.db) return;
+
+  function buildItem(p) {
+    var item = document.createElement('div');
+    item.className = 'pull-item';
+
+    var img = document.createElement('img');
+    img.src = p.imageUrl || '';
+    img.alt = p.name || 'Pulled card';
+    img.loading = 'lazy';
+
+    var badge = document.createElement('span');
+    badge.className = 'badge ' + (Number(p.grade) === 10 ? 'badge-10' : 'badge-9');
+    badge.textContent = (p.grader || '') + ' ' + (p.grade || '');
+
+    var name = document.createElement('div');
+    name.className = 'pull-name';
+    name.textContent = p.name || 'Graded Card';
+
+    var market = document.createElement('div');
+    market.className = 'pull-market';
+    market.textContent = 'Market £' + (Number(p.market) || 0);
+
+    item.appendChild(img);
+    item.appendChild(badge);
+    item.appendChild(name);
+    item.appendChild(market);
+    return item;
+  }
+
+  window.Kollect.db.collection('pulls')
+    .orderBy('pulledAt', 'desc')
+    .limit(12)
+    .onSnapshot(function (snap) {
+      track.innerHTML = '';
+      if (snap.empty) {
+        track.innerHTML = '<p class="pulls-empty">No pulls yet. Be the first!</p>';
+        return;
+      }
+      snap.forEach(function (doc) {
+        track.appendChild(buildItem(doc.data()));
+      });
+    }, function (err) {
+      console.warn('Recent pulls failed:', err);
+      track.innerHTML = '<p class="pulls-empty">Recent pulls unavailable.</p>';
+    });
 })();
 </script>
 </body>
