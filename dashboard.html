@@ -7,6 +7,41 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    /* Withdrawn cards list (new) */
+    .wd-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 14px;
+    }
+    .wd-item {
+      box-sizing: border-box;
+      background: #0f1117;
+      border: 1px solid #2a2f3d;
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      min-width: 0;
+    }
+    .wd-item img {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 3 / 4;
+      object-fit: contain;
+      border-radius: 6px;
+      margin: 0 auto 8px;
+      background: #000;
+    }
+    .wd-item .badge { display: inline-block; }
+    .wd-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+    .wd-meta { font-size: 0.75rem; color: #6b7280; margin-top: 3px; }
+    .wd-empty { color: #6b7280; font-size: 0.9rem; }
+  </style>
 </head>
 <body>
 
@@ -51,6 +86,11 @@
       <div class="stat-card">
         <div class="stat-value" id="statWithdrawn">0</div>
         <div class="stat-label">Withdrawn</div>
+      </div>
+      <!-- Cashed out balance (new) -->
+      <div class="stat-card">
+        <div class="stat-value" id="statCashBalance" style="color:#10b981">£0.00</div>
+        <div class="stat-label">Cashed Out Balance</div>
       </div>
     </div>
 
@@ -127,6 +167,14 @@
       </div>
     </div>
 
+    <!-- Withdrawn cards list (new) -->
+    <div class="card mt-3">
+      <h3 style="margin-bottom:12px">Withdrawn Cards</h3>
+      <div class="wd-grid" id="withdrawnGrid">
+        <p class="wd-empty">Sign in to see your withdrawn cards.</p>
+      </div>
+    </div>
+
     <div class="card mt-3">
       <h3 style="margin-bottom:12px">How buyback works</h3>
       <p class="text-muted" style="font-size:0.95rem">
@@ -162,14 +210,65 @@
     document.getElementById(id).textContent = text;
   }
 
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // Withdrawn cards list (new)
+  function renderWithdrawn(list) {
+    var grid = document.getElementById('withdrawnGrid');
+
+    if (!list.length) {
+      grid.innerHTML = '<p class="wd-empty">No withdrawn cards yet.</p>';
+      return;
+    }
+
+    // Newest withdrawal first
+    list.sort(function (a, b) {
+      var ta = a.withdrawnAt && a.withdrawnAt.toMillis ? a.withdrawnAt.toMillis() : Date.now();
+      var tb = b.withdrawnAt && b.withdrawnAt.toMillis ? b.withdrawnAt.toMillis() : Date.now();
+      return tb - ta;
+    });
+
+    grid.innerHTML = list.map(function (c) {
+      var isRaw = !Number(c.grade);
+      var gradeLabel = isRaw ? 'Raw' : escapeHtml(c.grader) + ' ' + escapeHtml(c.grade);
+
+      var when = '';
+      if (c.withdrawnAt && c.withdrawnAt.toDate) {
+        when = c.withdrawnAt.toDate().toLocaleDateString('en-GB', {
+          day: 'numeric', month: 'short', year: 'numeric'
+        });
+      }
+
+      return '<div class="wd-item">' +
+        '<img src="' + escapeHtml(c.imageUrl) + '" alt="' + escapeHtml(c.name) + '" />' +
+        '<span class="badge ' + (Number(c.grade) === 10 ? 'badge-10' : 'badge-9') + '">' + gradeLabel + '</span>' +
+        '<div class="wd-name">' + escapeHtml(c.name) + '</div>' +
+        (c.serial ? '<div class="wd-meta">Serial: ' + escapeHtml(c.serial) + '</div>' : '') +
+        '<div class="wd-meta">Market ' + money(c.market) + '</div>' +
+        '<div class="wd-meta">Locked buyback ' + money(c.buyback) + '</div>' +
+        (when ? '<div class="wd-meta">Withdrawn ' + when + '</div>' : '') +
+      '</div>';
+    }).join('');
+  }
+
   function resetStats() {
     setText('statOwned', '0');
     setText('statLocked', money(0));
     setText('statPacks', '0');
     setText('statConsigned', '0');
     setText('statWithdrawn', '0');
+    setText('statCashBalance', money(0));
     setText('acctPulledValue', money(0));
     setText('acctCashValue', money(0));
+    document.getElementById('withdrawnGrid').innerHTML =
+      '<p class="wd-empty">Sign in to see your withdrawn cards.</p>';
   }
 
   // Every card in users/{uid}/collection is one opened pack.
@@ -182,6 +281,7 @@
     var lockedBuyback = 0;
     var totalPulledValue = 0;
     var totalCash = 0;
+    var withdrawnCards = [];
 
     cards.forEach(function (c) {
       var status = c.status || 'owned';
@@ -194,6 +294,7 @@
         consigned += 1;
       } else if (status === 'withdrawn') {
         withdrawn += 1;
+        withdrawnCards.push(c);
       } else {
         owned += 1;
         lockedBuyback += Number(c.buyback || 0);
@@ -205,8 +306,11 @@
     setText('statPacks', String(cards.length));
     setText('statConsigned', String(consigned));
     setText('statWithdrawn', String(withdrawn));
+    setText('statCashBalance', money(totalCash));
     setText('acctPulledValue', money(totalPulledValue));
     setText('acctCashValue', money(totalCash));
+
+    renderWithdrawn(withdrawnCards);
   }
 
   // ===== CONTACT / DELIVERY DETAILS =====
