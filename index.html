@@ -7,6 +7,70 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    /* What can you pull - hits showcase (new) */
+    .hv-section { margin-bottom: 32px; }
+    .hv-section > h2 { text-align: center; margin-bottom: 6px; }
+    .hv-section > p { text-align: center; color: #6b7280; font-size: 0.9rem; margin-bottom: 18px; }
+    .hv-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 760px) { .hv-grid { grid-template-columns: 1fr; } }
+    .hv-box {
+      background: #1a1d27;
+      border: 1px solid #2a2f3d;
+      border-radius: 16px;
+      padding: 18px;
+      min-width: 0;
+    }
+    .hv-box h3 { font-size: 1.05rem; margin-bottom: 12px; }
+    .hv-track {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 8px;
+    }
+    .hv-track::-webkit-scrollbar { height: 6px; }
+    .hv-track::-webkit-scrollbar-thumb { background: #2a2f3d; border-radius: 3px; }
+    .hv-item {
+      display: block;
+      box-sizing: border-box;
+      flex: 0 0 130px;
+      scroll-snap-align: start;
+      background: #0f1117;
+      border: 1px solid #2a2f3d;
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      min-width: 0;
+    }
+    .hv-item img {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 3 / 4;
+      object-fit: contain;
+      border-radius: 6px;
+      margin: 0 auto 8px;
+      background: #000;
+    }
+    .hv-item .badge { display: inline-block; }
+    .hv-name {
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-top: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hv-market { font-size: 0.75rem; color: #6b7280; }
+    .hv-empty { color: #6b7280; font-size: 0.85rem; }
+  </style>
 </head>
 <body>
 
@@ -32,7 +96,29 @@
     <div class="hero">
       <h1>Mystery Graded Packs</h1>
       <p>Every pack contains a verified Grade 9 or Grade 10 Pokemon card. Pay £25, open instantly, and choose cash buyback or consign with Kollect.</p>
-      <a href="buy.html" class="btn btn-primary btn-lg">Open a Pack — £25</a>
+      <a href="buy.html" class="btn btn-primary btn-lg">Open a Pack </a>
+    </div>
+
+    <!-- WHAT CAN YOU PULL (new) -->
+    <div class="hv-section">
+      <h2>What can you pull?</h2>
+      <p>Hits and grails still in the vault. Redeemed cards disappear.</p>
+
+      <div class="hv-grid">
+        <div class="hv-box">
+          <h3>Raw Hits</h3>
+          <div class="hv-track" id="rawHitsTrack">
+            <p class="hv-empty">Loading raw hits...</p>
+          </div>
+        </div>
+
+        <div class="hv-box">
+          <h3>Graded Hits</h3>
+          <div class="hv-track" id="gradedHitsTrack">
+            <p class="hv-empty">Loading graded hits...</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="grid-3 mb-3">
@@ -54,7 +140,7 @@
       <h2 style="margin-bottom:16px">How it works</h2>
       <ol style="padding-left:20px; color:var(--muted); line-height:2">
         <li>Create an account or sign in</li>
-        <li>Purchase a £25 Mystery Pack</li>
+        <li>Purchase a Pack</li>
         <li>Watch the grade reveal animation</li>
         <li>See the actual card from our stock</li>
         <li>Keep it, take the locked cash buyback, or consign</li>
@@ -73,5 +159,77 @@
 <script src="js/firebase-config.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/auth-menu.js"></script>
+
+<!-- Hits showcase (new) -->
+<script>
+(function () {
+  var HITS_TO_SHOW = 10; // top cards by market value
+
+  if (!window.Kollect || !window.Kollect.db) return;
+  var db = window.Kollect.db;
+
+  function buildItem(c, isRaw) {
+    var item = document.createElement('div');
+    item.className = 'hv-item';
+
+    var img = document.createElement('img');
+    img.src = c.imageUrl || '';
+    img.alt = c.name || 'Card';
+    img.loading = 'lazy';
+
+    var badge = document.createElement('span');
+    badge.className = 'badge ' + (Number(c.grade) === 10 ? 'badge-10' : 'badge-9');
+    badge.textContent = isRaw ? 'Raw' : (c.grader || '') + ' ' + (c.grade || '');
+
+    var name = document.createElement('div');
+    name.className = 'hv-name';
+    name.textContent = c.name || 'Card';
+
+    var market = document.createElement('div');
+    market.className = 'hv-market';
+    market.textContent = 'Market £' + (Number(c.market) || 0);
+
+    item.appendChild(img);
+    item.appendChild(badge);
+    item.appendChild(name);
+    item.appendChild(market);
+    return item;
+  }
+
+  // Live list of the highest value cards that are still available (unredeemed)
+  function loadHits(collName, trackId, isRaw) {
+    var track = document.getElementById(trackId);
+    if (!track) return;
+
+    db.collection(collName)
+      .where('status', '==', 'available')
+      .onSnapshot(function (snap) {
+        var cards = [];
+        snap.forEach(function (doc) { cards.push(doc.data()); });
+
+        cards.sort(function (a, b) {
+          return (Number(b.market) || 0) - (Number(a.market) || 0);
+        });
+
+        track.innerHTML = '';
+
+        if (!cards.length) {
+          track.innerHTML = '<p class="hv-empty">No ' + (isRaw ? 'raw' : 'graded') + ' cards available right now.</p>';
+          return;
+        }
+
+        cards.slice(0, HITS_TO_SHOW).forEach(function (c) {
+          track.appendChild(buildItem(c, isRaw));
+        });
+      }, function (err) {
+        console.warn('Hits failed:', err);
+        track.innerHTML = '<p class="hv-empty">Hits unavailable.</p>';
+      });
+  }
+
+  loadHits('rawInventory', 'rawHitsTrack', true);
+  loadHits('inventory', 'gradedHitsTrack', false);
+})();
+</script>
 </body>
 </html>
