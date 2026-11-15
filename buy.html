@@ -84,7 +84,7 @@
       to   { transform: scale(1); opacity: 1; }
     }
 
-    /* Recent pulls showcase (new) */
+    /* Recent pulls showcase */
     .pulls-showcase { margin-top: 24px; padding-top: 20px; border-top: 1px solid #2a2f3d; }
     .pulls-showcase h3 { font-size: 1rem; margin-bottom: 12px; }
     .pulls-track {
@@ -131,13 +131,10 @@
     .vault-pull-market { font-size: 0.75rem; color: #6b7280; }
     .pulls-empty { color: #6b7280; font-size: 0.85rem; }
 
-    /* ===== ADDITIONS: layout fix, raw foil pack, burst, reveal flip ===== */
-
-    /* Stops wide scrolling rows from stretching the page on phones */
+    /* Layout fix, raw foil pack, burst, reveal flip */
     .grid-2 > * { min-width: 0; }
     .pack-card { min-width: 0; max-width: 100%; }
 
-    /* Raw card pack: smaller, teal foil */
     .foil-pack.raw {
       width: 120px;
       height: 185px;
@@ -152,7 +149,6 @@
     }
     .foil-pack.raw .foil-star { font-size: 3rem; }
 
-    /* Pack bursts when purchase confirms */
     .foil-pack.burst { animation: packBurst 0.4s ease-in forwards; }
     @keyframes packBurst {
       0%   { transform: scale(1); filter: brightness(1); }
@@ -160,7 +156,6 @@
       100% { transform: scale(1.5); opacity: 0; filter: brightness(4); }
     }
 
-    /* Card reveal: 3D flip, light flash, gold glow for Grade 10 */
     .reveal-card-box {
       position: relative;
       overflow: hidden;
@@ -196,6 +191,85 @@
       border-color: #fbbf24;
       box-shadow: 0 0 70px rgba(251, 191, 36, 0.55);
     }
+
+    /* ===== NEW: GRADED TIERS ===== */
+    .tier-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 8px;
+      margin-bottom: 14px;
+    }
+    .tier-tabs::-webkit-scrollbar { height: 0; }
+    .tier-tab {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      border: 1px solid #2a2f3d;
+      background: #0f1117;
+      color: #9ca3af;
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tier-tab .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .tier-tab.active {
+      color: #f0f2f5;
+      border-color: var(--tier-color, #8b5cf6);
+      box-shadow: 0 0 0 1px var(--tier-color, #8b5cf6) inset;
+      background: #1a1d27;
+    }
+
+    .tier-range {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      margin: 18px 0 6px;
+      border: 1px solid #2a2f3d;
+      border-radius: 12px;
+      background: #0f1117;
+    }
+    .tier-range > div { flex: 1; padding: 12px 8px; text-align: center; }
+    .tier-range > div + div { border-left: 1px solid #2a2f3d; }
+    .tier-range small {
+      display: block;
+      font-size: 0.72rem;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+    .tier-range strong { font-size: 1.25rem; font-weight: 800; color: #f0f2f5; }
+    .tier-stock { font-size: 0.8rem; color: #6b7280; text-align: center; margin: 8px 0 0; min-height: 1.2em; }
+    .tier-stock.low { color: #f59e0b; }
+    .tier-stock.out { color: #ef4444; }
+
+    /* Foil colour per tier (uses the existing .foil-pack markup) */
+    .foil-pack[data-tier="bronze"] { filter: drop-shadow(0 22px 28px rgba(0,0,0,.65)) drop-shadow(0 0 34px rgba(205,127,50,.5)); }
+    .foil-pack[data-tier="bronze"] .foil-crimp { background: linear-gradient(120deg,#5b2e12,#c2713a,#e8a56b,#a35a2a,#5b2e12); background-size: 300% 100%; }
+    .foil-pack[data-tier="bronze"] .foil-body  { background: linear-gradient(160deg,#6b3416 0%,#c2713a 40%,#e8a56b 70%,#8a4a24 100%); }
+
+    .foil-pack[data-tier="silver"] { filter: drop-shadow(0 22px 28px rgba(0,0,0,.65)) drop-shadow(0 0 34px rgba(203,213,225,.45)); }
+    .foil-pack[data-tier="silver"] .foil-crimp { background: linear-gradient(120deg,#4b5563,#d1d5db,#f9fafb,#9ca3af,#4b5563); background-size: 300% 100%; }
+    .foil-pack[data-tier="silver"] .foil-body  { background: linear-gradient(160deg,#4b5563 0%,#9ca3af 35%,#f3f4f6 65%,#9ca3af 100%); }
+
+    .foil-pack[data-tier="gold"] { filter: drop-shadow(0 22px 28px rgba(0,0,0,.65)) drop-shadow(0 0 34px rgba(251,191,36,.55)); }
+    .foil-pack[data-tier="gold"] .foil-crimp { background: linear-gradient(120deg,#78350f,#f59e0b,#fde68a,#d97706,#78350f); background-size: 300% 100%; }
+    .foil-pack[data-tier="gold"] .foil-body  { background: linear-gradient(160deg,#92400e 0%,#f59e0b 35%,#fde68a 65%,#d97706 100%); }
+
+    .foil-pack[data-tier="platinum"] { filter: drop-shadow(0 22px 28px rgba(0,0,0,.65)) drop-shadow(0 0 34px rgba(139,92,246,.55)); }
+    .foil-pack[data-tier="platinum"] .foil-crimp { background: linear-gradient(120deg,#4c1d95,#8b5cf6,#c4b5fd,#7c3aed,#4c1d95); background-size: 300% 100%; }
+    .foil-pack[data-tier="platinum"] .foil-body  { background: linear-gradient(160deg,#4c1d95 0%,#7c3aed 35%,#c4b5fd 65%,#6d28d9 100%); }
+
+    .foil-pack[data-tier="diamond"] { filter: drop-shadow(0 22px 28px rgba(0,0,0,.65)) drop-shadow(0 0 40px rgba(56,189,248,.65)); }
+    .foil-pack[data-tier="diamond"] .foil-crimp { background: linear-gradient(120deg,#0c4a6e,#38bdf8,#e0f2fe,#0ea5e9,#0c4a6e); background-size: 300% 100%; }
+    .foil-pack[data-tier="diamond"] .foil-body  { background: linear-gradient(160deg,#0c4a6e 0%,#0ea5e9 35%,#e0f2fe 65%,#38bdf8 100%); }
   </style>
 </head>
 <body>
@@ -218,38 +292,46 @@
 
   <div class="container page-content">
     <h1 class="page-title">Buy a Mystery Pack</h1>
-    <p class="page-sub">One graded Grade 9 or Grade 10 Pokemon card. Instant reveal.</p>
+    <p class="page-sub">Pick a tier. One graded Grade 9 or Grade 10 Pokemon card from that tier's value range. Instant reveal.</p>
 
     <div class="grid-2" style="align-items:start">
       <div>
         <div class="pack-card">
           <span class="badge badge-10" style="margin-bottom:12px">Grade 9 or 10 Guaranteed</span>
-          <h2>Graded Card</h2>
 
-          <!-- Foil pack (new) -->
-          <div class="foil-pack" id="foilPack" aria-hidden="true">
+          <!-- Tier selector (built by JS) -->
+          <div class="tier-tabs" id="tierTabs"></div>
+
+          <h2 id="tierName">Graded Card</h2>
+
+          <div class="foil-pack" id="foilPack" data-tier="silver" aria-hidden="true">
             <div class="foil-crimp foil-crimp-top"></div>
             <div class="foil-body">
               <div class="foil-logo">Kollect<span>Vault</span></div>
               <div class="foil-star">?</div>
-              <div class="foil-tag">Graded 9 / 10</div>
+              <div class="foil-tag" id="foilTag">Graded 9 / 10</div>
             </div>
             <div class="foil-crimp foil-crimp-bottom"></div>
           </div>
 
-          <div class="pack-price">£25 <small>/ pack</small></div>
+          <div class="tier-range">
+            <div><small>Min Pull</small><strong id="tierMin">£0</strong></div>
+            <div><small>Max Pull</small><strong id="tierMax">£0</strong></div>
+          </div>
+          <p class="tier-stock" id="tierStock"></p>
+
+          <div class="pack-price" id="tierPrice">£25 <small>/ pack</small></div>
           <ul class="pack-features">
             <li>One graded Pokemon card (PSA / CGC / BGS)</li>
             <li>Grade 9 or Grade 10 only</li>
-            <li>Market value typically £20 – £100+</li>
+            <li id="tierValueLine">Market value in this tier's range</li>
             <li>Instant digital reveal + ownership</li>
             <li>Locked cash buyback at open</li>
             <li>Or consign via Kollect in one click</li>
           </ul>
-          <button class="btn btn-primary btn-lg w-full" id="btnBuy">Purchase for £25</button>
+          <button class="btn btn-primary btn-lg w-full" id="btnBuy">Purchase</button>
           <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
 
-          <!-- Recent pulls showcase (new) -->
           <div class="pulls-showcase">
             <h3>Recent Pulls</h3>
             <div class="pulls-track" id="pullsTrack">
@@ -258,12 +340,11 @@
           </div>
         </div>
 
-        <!-- Raw card option (new) -->
+        <!-- Raw card option -->
         <div class="pack-card" style="margin-top:20px">
           <span class="badge badge-9" style="margin-bottom:12px">Raw Card</span>
           <h2>Raw Card</h2>
 
-          <!-- Raw foil pack (new) -->
           <div class="foil-pack raw" id="foilPackRaw" aria-hidden="true">
             <div class="foil-crimp foil-crimp-top"></div>
             <div class="foil-body">
@@ -284,7 +365,6 @@
           <button class="btn btn-primary btn-lg w-full" id="btnBuyRaw">Purchase for £4.50</button>
           <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
 
-          <!-- Recent raw pulls showcase (new) -->
           <div class="pulls-showcase">
             <h3>Recent Raw Pulls</h3>
             <div class="pulls-track" id="rawPullsTrack">
@@ -298,7 +378,8 @@
         <div class="card mb-2">
           <h3 style="margin-bottom:12px">What’s inside</h3>
           <p class="text-muted" style="font-size:0.95rem">
-            Every pack contains one verified graded card drawn at random from live inventory.
+            Every pack contains one verified graded card drawn at random from live inventory,
+            limited to the value range of the tier you choose.
             Odds are based purely on what is currently in the vault — no artificial weighting.
           </p>
         </div>
@@ -403,12 +484,39 @@
   var currentUser = null;
   var busy = false;
 
-  // Options available to buy (new)
-  var PACKS = {
-    graded: { label: 'Graded Card', price: '£25.00', short: '£25' },
-    raw:    { label: 'Raw Card',    price: '£4.50',  short: '£4.50' }
-  };
+  // =====================================================================
+  // GRADED TIERS — EDIT THESE
+  // price = what the customer pays
+  // min / max = the card's "market" value range that tier can pull
+  // max: null = no upper limit
+  // A card is eligible if min <= market <= max
+  // =====================================================================
+  var TIERS = [
+    { id: 'bronze',   name: 'Bronze',   price: 10,  min: 8,   max: 25,   color: '#c2713a' },
+    { id: 'silver',   name: 'Silver',   price: 25,  min: 20,  max: 60,   color: '#cbd5e1' },
+    { id: 'gold',     name: 'Gold',     price: 50,  min: 40,  max: 120,  color: '#f59e0b' },
+    { id: 'platinum', name: 'Platinum', price: 100, min: 80,  max: 300,  color: '#8b5cf6' },
+    { id: 'diamond',  name: 'Diamond',  price: 250, min: 200, max: null, color: '#38bdf8' }
+  ];
+
+  var selectedTier = TIERS[1]; // starts on Silver (the old £25 pack)
   var selectedKind = 'graded';
+  var stockByTier = null;       // filled in once inventory loads
+
+  var RAW_PACK = { label: 'Raw Card', price: 4.5 };
+
+  function money(n) {
+    return '£' + Number(n).toLocaleString('en-GB', { minimumFractionDigits: (n % 1 ? 2 : 0), maximumFractionDigits: 2 });
+  }
+  function money2(n) {
+    return '£' + Number(n).toFixed(2);
+  }
+  function inTier(market, tier) {
+    var m = Number(market) || 0;
+    if (m < tier.min) return false;
+    if (tier.max !== null && m > tier.max) return false;
+    return true;
+  }
 
   auth.onAuthStateChanged(function (user) {
     currentUser = user;
@@ -430,6 +538,104 @@
   var resultOverlay = document.getElementById('resultOverlay');
   var ripVideo      = document.getElementById('ripVideo');
 
+  // ===== TIER UI =====
+  var tabsEl = document.getElementById('tierTabs');
+
+  function buildTabs() {
+    tabsEl.innerHTML = '';
+    TIERS.forEach(function (t) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tier-tab';
+      b.setAttribute('data-id', t.id);
+      b.style.setProperty('--tier-color', t.color);
+
+      var dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = t.color;
+
+      var label = document.createElement('span');
+      label.textContent = t.name + ' · ' + money(t.price);
+
+      b.appendChild(dot);
+      b.appendChild(label);
+      b.addEventListener('click', function () {
+        selectedTier = t;
+        renderTier();
+      });
+      tabsEl.appendChild(b);
+    });
+  }
+
+  function renderTier() {
+    var t = selectedTier;
+
+    // tabs
+    Array.prototype.forEach.call(tabsEl.children, function (el) {
+      var active = el.getAttribute('data-id') === t.id;
+      el.classList.toggle('active', active);
+      if (active) {
+        try { el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } catch (e) {}
+      }
+    });
+
+    // text
+    document.getElementById('tierName').textContent = t.name + ' Pack';
+    document.getElementById('foilTag').textContent = t.name;
+    document.getElementById('foilPack').setAttribute('data-tier', t.id);
+    document.getElementById('tierMin').textContent = money(t.min);
+    document.getElementById('tierMax').textContent = t.max === null ? money(t.min * 5) + '+' : money(t.max);
+    if (t.max === null) document.getElementById('tierMax').textContent = 'No limit';
+    document.getElementById('tierPrice').innerHTML = money(t.price) + ' <small>/ pack</small>';
+    document.getElementById('tierValueLine').textContent =
+      'Market value ' + money(t.min) + (t.max === null ? ' and up' : ' – ' + money(t.max));
+
+    // stock + button
+    var btn = document.getElementById('btnBuy');
+    var stockEl = document.getElementById('tierStock');
+    stockEl.className = 'tier-stock';
+    var soldOut = false;
+
+    if (stockByTier) {
+      var n = stockByTier[t.id] || 0;
+      if (n === 0) {
+        stockEl.textContent = 'Sold out';
+        stockEl.classList.add('out');
+        soldOut = true;
+      } else if (n <= 5) {
+        stockEl.textContent = 'Only ' + n + ' left in this tier';
+        stockEl.classList.add('low');
+      } else {
+        stockEl.textContent = n + ' cards in stock';
+      }
+    } else {
+      stockEl.textContent = '';
+    }
+
+    btn.disabled = soldOut;
+    btn.textContent = soldOut ? 'Sold out' : 'Purchase for ' + money(t.price);
+  }
+
+  // Counts available graded cards per tier (best effort; page still works if it fails)
+  function loadStock() {
+    db.collection('inventory')
+      .where('status', '==', 'available')
+      .get()
+      .then(function (snap) {
+        var counts = {};
+        TIERS.forEach(function (t) { counts[t.id] = 0; });
+        snap.forEach(function (d) {
+          var m = d.data().market;
+          TIERS.forEach(function (t) { if (inTier(m, t)) counts[t.id]++; });
+        });
+        stockByTier = counts;
+        renderTier();
+      })
+      .catch(function (err) {
+        console.warn('Stock count unavailable:', err);
+      });
+  }
+
   // ===== REAL PULL FROM FIRESTORE =====
   function shuffle(arr) {
     for (var i = arr.length - 1; i > 0; i--) {
@@ -439,9 +645,10 @@
     return arr;
   }
 
-  // kind: 'graded' (default) or 'raw'.
-  // Graded cards come from the "inventory" collection, raw cards from "rawInventory".
-  function pullCard(uid, kind) {
+  // kind: 'graded' or 'raw'. tier: only used for graded.
+  // Graded cards come from "inventory", raw cards from "rawInventory".
+  // Graded pulls only consider cards whose market value is inside the tier's range.
+  function pullCard(uid, kind, tier) {
     kind = kind || 'graded';
     var collName = kind === 'raw' ? 'rawInventory' : 'inventory';
     return db.collection(collName)
@@ -449,16 +656,19 @@
       .get()
       .then(function (snap) {
         var ids = [];
-        snap.forEach(function (d) { ids.push(d.id); });
+        snap.forEach(function (d) {
+          if (kind === 'graded' && tier && !inTier(d.data().market, tier)) return;
+          ids.push(d.id);
+        });
         if (!ids.length) throw new Error('SOLD_OUT');
         shuffle(ids);
-        return tryClaim(ids, 0, uid, collName);
+        return tryClaim(ids, 0, uid, collName, kind, tier);
       });
   }
 
   // Claims one card inside a transaction. If someone else got it first,
   // it moves on to the next card in the shuffled list.
-  function tryClaim(ids, i, uid, collName) {
+  function tryClaim(ids, i, uid, collName, kind, tier) {
     collName = collName || 'inventory';
     if (i >= ids.length) return Promise.reject(new Error('SOLD_OUT'));
 
@@ -470,6 +680,10 @@
         if (!snap.exists || snap.data().status !== 'available') return null;
 
         var c = snap.data();
+
+        // Double-check the tier range at claim time
+        if (kind === 'graded' && tier && !inTier(c.market, tier)) return null;
+
         var buyback = Math.round(Number(c.market || 0) * BUYBACK_PERCENT * 100) / 100;
 
         var owned = {
@@ -502,18 +716,25 @@
       });
     }).then(function (result) {
       if (result) return result;
-      return tryClaim(ids, i + 1, uid, collName);
+      return tryClaim(ids, i + 1, uid, collName, kind, tier);
     });
   }
 
-  // Shows the chosen option in the payment popup (new)
+  // Shows the chosen option in the payment popup
   function setPaymentSummary(kind) {
-    var p = PACKS[kind];
     selectedKind = kind;
-    document.getElementById('payItemName').textContent = p.label;
-    document.getElementById('payItemPrice').textContent = p.price;
-    document.getElementById('payTotal').textContent = p.price;
-    document.getElementById('btnPayNow').textContent = 'Pay Now — ' + p.short;
+    var label, price;
+    if (kind === 'raw') {
+      label = RAW_PACK.label;
+      price = RAW_PACK.price;
+    } else {
+      label = selectedTier.name + ' Pack (Graded)';
+      price = selectedTier.price;
+    }
+    document.getElementById('payItemName').textContent = label;
+    document.getElementById('payItemPrice').textContent = money2(price);
+    document.getElementById('payTotal').textContent = money2(price);
+    document.getElementById('btnPayNow').textContent = 'Pay Now — ' + money(price);
   }
 
   function startPurchase(kind) {
@@ -527,12 +748,10 @@
     openOverlay(payOverlay);
   }
 
-  // Open payment (must be signed in)
   document.getElementById('btnBuy').addEventListener('click', function () {
     startPurchase('graded');
   });
 
-  // Raw card purchase (new)
   document.getElementById('btnBuyRaw').addEventListener('click', function () {
     startPurchase('raw');
   });
@@ -554,7 +773,6 @@
 
     closeOverlay(payOverlay);
 
-    // Foil pack animation (new). Falls back to the normal flow if the pack isn't found.
     var packEl = document.getElementById(selectedKind === 'raw' ? 'foilPackRaw' : 'foilPack');
     if (!packEl) {
       startReveal(user.uid);
@@ -570,7 +788,6 @@
       packEl.classList.add('burst');
       setTimeout(function () {
         startReveal(user.uid);
-        // Put the pack back once the overlay is covering the page
         setTimeout(function () { packEl.classList.remove('burst'); }, 1200);
       }, 350);
     }, 900);
@@ -579,24 +796,24 @@
   function startReveal(uid) {
     busy = true;
 
-    var pullPromise = pullCard(uid, selectedKind);
+    var pullPromise = pullCard(uid, selectedKind, selectedTier);
 
     openOverlay(videoOverlay);
     document.getElementById('videoStatus').textContent = 'Opening your pack...';
 
     var done = false;
 
-    // If the pull fails, stop everything and tell the user
     pullPromise.catch(function (err) {
       done = true;
       try { ripVideo.pause(); } catch (e) {}
       closeOverlay(videoOverlay);
       busy = false;
       if (err && err.message === 'SOLD_OUT') {
-        alert('Sorry, there are no cards available right now.');
+        alert('Sorry, there are no cards available in this tier right now.');
       } else {
         alert('Could not open your pack: ' + (err && err.message ? err.message : err));
       }
+      loadStock();
     });
 
     function finishVideo() {
@@ -605,6 +822,7 @@
       pullPromise.then(function (card) {
         showCard(card);
         busy = false;
+        loadStock(); // refresh the in-stock counts
       });
     }
 
@@ -613,7 +831,6 @@
       var playPromise = ripVideo.play();
       if (playPromise !== undefined) {
         playPromise.catch(function () {
-          // Autoplay blocked — skip to card after short delay
           setTimeout(finishVideo, 1500);
         });
       }
@@ -621,7 +838,6 @@
       setTimeout(finishVideo, 1500);
     }
 
-    // When video ends (or after max 12s fallback)
     ripVideo.onended = finishVideo;
     setTimeout(finishVideo, 12000);
   }
@@ -630,7 +846,6 @@
     closeOverlay(videoOverlay);
     try { ripVideo.pause(); } catch (e) {}
 
-    // Raw cards have no grade (new)
     var isRaw = !card.grade;
     var gradeLabel = isRaw ? 'Raw' : card.grader + ' ' + card.grade;
 
@@ -643,7 +858,6 @@
     badge.textContent = gradeLabel;
     badge.className = 'badge ' + (card.grade === 10 ? 'badge-10' : 'badge-9');
 
-    // Gold glow for Grade 10 (new)
     var rb = document.querySelector('.reveal-card-box');
     if (rb) rb.classList.toggle('gold', card.grade === 10);
 
@@ -653,10 +867,15 @@
   document.getElementById('btnCloseResult').addEventListener('click', function () {
     closeOverlay(resultOverlay);
   });
+
+  // Start
+  buildTabs();
+  renderTier();
+  loadStock();
 })();
 </script>
 
-<!-- Recent pulls showcase: graded + raw (new) -->
+<!-- Recent pulls showcase: graded + raw -->
 <script>
 (function () {
   var gradedTrack = document.getElementById('pullsTrack');
@@ -703,7 +922,6 @@
     });
   }
 
-  // One live feed, split into graded (has a grade) and raw (no grade)
   window.Kollect.db.collection('pulls')
     .orderBy('pulledAt', 'desc')
     .limit(40)
