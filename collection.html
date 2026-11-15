@@ -57,6 +57,8 @@
   var note = document.getElementById('collectionNote');
   var unsubscribe = null;
 
+  var SELL_URL = 'https://www.kollect100.com/sell-with-us.php';
+
   function escapeHtml(str) {
     if (str === null || str === undefined) return '';
     return String(str)
@@ -67,6 +69,11 @@
   }
 
   function renderCards(cards) {
+    // Only show cards still in the collection (not withdrawn or consigned) (new)
+    cards = cards.filter(function (c) {
+      return !c.status || c.status === 'owned';
+    });
+
     if (!cards.length) {
       grid.innerHTML = '';
       note.textContent = 'No cards yet. Buy a pack to start your collection.';
@@ -78,24 +85,69 @@
     grid.innerHTML = cards.map(function (c) {
       var buyback = Number(c.buyback || 0).toFixed(2);
 
+      // Raw cards have no grade (new)
+      var gradeLabel = Number(c.grade) ? escapeHtml(c.grader) + ' ' + escapeHtml(c.grade) : 'Raw';
+
       return '<div class="card-item">' +
         '<img src="' + escapeHtml(c.imageUrl) + '" alt="' + escapeHtml(c.name) + '" />' +
         '<div class="card-item-body">' +
           '<div class="card-item-name">' + escapeHtml(c.name) + '</div>' +
           '<div class="mb-2">' +
             '<span class="badge ' + (c.grade === 10 ? 'badge-10' : 'badge-9') + '">' +
-              escapeHtml(c.grader) + ' ' + escapeHtml(c.grade) +
+              gradeLabel +
             '</span>' +
           '</div>' +
           '<p class="text-dim" style="font-size:0.82rem;margin-bottom:10px">Locked buyback: £' + buyback + '</p>' +
           '<div class="flex gap-2" style="flex-wrap:wrap">' +
             '<button class="btn btn-success btn-sm">Cash £' + buyback + '</button>' +
-            '<button class="btn btn-primary btn-sm">Sell with Kollect</button>' +
+            '<button class="btn btn-primary btn-sm" data-action="consign" data-id="' + escapeHtml(c.id) + '">Sell with Kollect</button>' +
+            '<button class="btn btn-secondary btn-sm" data-action="withdraw" data-id="' + escapeHtml(c.id) + '">Get physical card</button>' +
           '</div>' +
         '</div>' +
       '</div>';
     }).join('');
   }
+
+  // Sell with Kollect / Get physical card (new)
+  grid.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+
+    var user = auth.currentUser;
+    if (!user) return;
+
+    var action = btn.getAttribute('data-action');
+    var cardId = btn.getAttribute('data-id');
+    var cardRef = db.collection('users').doc(user.uid).collection('collection').doc(cardId);
+
+    if (action === 'consign') {
+      if (!confirm('Consign this card with Kollect? You will be taken to the Kollect sell page.')) return;
+
+      btn.disabled = true;
+      cardRef.update({
+        status: 'consigned',
+        consignedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(function () {
+        window.location.href = SELL_URL;
+      }).catch(function (err) {
+        btn.disabled = false;
+        alert('Could not consign this card: ' + err.message);
+      });
+    }
+
+    if (action === 'withdraw') {
+      if (!confirm('Withdraw this card as a physical card? It will move to Withdrawn on your dashboard.')) return;
+
+      btn.disabled = true;
+      cardRef.update({
+        status: 'withdrawn',
+        withdrawnAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).catch(function (err) {
+        btn.disabled = false;
+        alert('Could not withdraw this card: ' + err.message);
+      });
+    }
+  });
 
   auth.onAuthStateChanged(function (user) {
     if (unsubscribe) {
@@ -116,7 +168,9 @@
       .onSnapshot(function (snap) {
         var cards = [];
         snap.forEach(function (doc) {
-          cards.push(doc.data());
+          var data = doc.data();
+          data.id = doc.id;
+          cards.push(data);
         });
         renderCards(cards);
       }, function (err) {
