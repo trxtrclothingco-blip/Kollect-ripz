@@ -155,27 +155,44 @@
     <p class="page-sub">One graded Grade 9 or Grade 10 Pokemon card. Instant reveal.</p>
 
     <div class="grid-2" style="align-items:start">
-      <div class="pack-card">
-        <span class="badge badge-10" style="margin-bottom:12px">Grade 9 or 10 Guaranteed</span>
-        <h2>Kollect Vault Pack</h2>
-        <div class="pack-price">£25 <small>/ pack</small></div>
-        <ul class="pack-features">
-          <li>One graded Pokemon card (PSA / CGC / BGS)</li>
-          <li>Grade 9 or Grade 10 only</li>
-          <li>Market value typically £20 – £100+</li>
-          <li>Instant digital reveal + ownership</li>
-          <li>Locked cash buyback at open</li>
-          <li>Or consign via Kollect in one click</li>
-        </ul>
-        <button class="btn btn-primary btn-lg w-full" id="btnBuy">Purchase for £25</button>
-        <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
+      <div>
+        <div class="pack-card">
+          <span class="badge badge-10" style="margin-bottom:12px">Grade 9 or 10 Guaranteed</span>
+          <h2>Graded Card</h2>
+          <div class="pack-price">£25 <small>/ pack</small></div>
+          <ul class="pack-features">
+            <li>One graded Pokemon card (PSA / CGC / BGS)</li>
+            <li>Grade 9 or Grade 10 only</li>
+            <li>Market value typically £20 – £100+</li>
+            <li>Instant digital reveal + ownership</li>
+            <li>Locked cash buyback at open</li>
+            <li>Or consign via Kollect in one click</li>
+          </ul>
+          <button class="btn btn-primary btn-lg w-full" id="btnBuy">Purchase for £25</button>
+          <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
 
-        <!-- Recent pulls showcase (new) -->
-        <div class="pulls-showcase">
-          <h3>Recent Pulls</h3>
-          <div class="pulls-track" id="pullsTrack">
-            <p class="pulls-empty">Loading recent pulls...</p>
+          <!-- Recent pulls showcase (new) -->
+          <div class="pulls-showcase">
+            <h3>Recent Pulls</h3>
+            <div class="pulls-track" id="pullsTrack">
+              <p class="pulls-empty">Loading recent pulls...</p>
+            </div>
           </div>
+        </div>
+
+        <!-- Raw card option (new) -->
+        <div class="pack-card" style="margin-top:20px">
+          <span class="badge badge-9" style="margin-bottom:12px">Raw Card</span>
+          <h2>Raw Card</h2>
+          <div class="pack-price">£4.50 <small>/ card</small></div>
+          <ul class="pack-features">
+            <li>One raw (ungraded) Pokemon card</li>
+            <li>Instant digital reveal + ownership</li>
+            <li>Locked cash buyback at open</li>
+            <li>Or consign via Kollect in one click</li>
+          </ul>
+          <button class="btn btn-primary btn-lg w-full" id="btnBuyRaw">Purchase for £4.50</button>
+          <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
         </div>
       </div>
 
@@ -208,8 +225,8 @@
       <button class="modal-close" id="payClose">&times;</button>
       <h2>Checkout</h2>
       <div class="pay-row">
-        <span class="text-muted">Kollect Vault Pack</span>
-        <span>£25.00</span>
+        <span class="text-muted" id="payItemName">Graded Card</span>
+        <span id="payItemPrice">£25.00</span>
       </div>
       <div class="pay-row">
         <span class="text-muted">Processing fee</span>
@@ -217,7 +234,7 @@
       </div>
       <div class="pay-row">
         <span class="pay-total">Total</span>
-        <span class="pay-total">£25.00</span>
+        <span class="pay-total" id="payTotal">£25.00</span>
       </div>
 
       <div class="form-group">
@@ -288,6 +305,13 @@
   var currentUser = null;
   var busy = false;
 
+  // Options available to buy (new)
+  var PACKS = {
+    graded: { label: 'Graded Card', price: '£25.00', short: '£25' },
+    raw:    { label: 'Raw Card',    price: '£4.50',  short: '£4.50' }
+  };
+  var selectedKind = 'graded';
+
   auth.onAuthStateChanged(function (user) {
     currentUser = user;
   });
@@ -317,13 +341,18 @@
     return arr;
   }
 
-  function pullCard(uid) {
+  // kind: 'graded' (default) or 'raw'. Raw cards are inventory items with type: "raw".
+  function pullCard(uid, kind) {
+    kind = kind || 'graded';
     return db.collection('inventory')
       .where('status', '==', 'available')
       .get()
       .then(function (snap) {
         var ids = [];
-        snap.forEach(function (d) { ids.push(d.id); });
+        snap.forEach(function (d) {
+          var isRawCard = d.data().type === 'raw';
+          if ((kind === 'raw') === isRawCard) ids.push(d.id);
+        });
         if (!ids.length) throw new Error('SOLD_OUT');
         shuffle(ids);
         return tryClaim(ids, 0, uid);
@@ -379,15 +408,35 @@
     });
   }
 
-  // Open payment (must be signed in)
-  document.getElementById('btnBuy').addEventListener('click', function () {
+  // Shows the chosen option in the payment popup (new)
+  function setPaymentSummary(kind) {
+    var p = PACKS[kind];
+    selectedKind = kind;
+    document.getElementById('payItemName').textContent = p.label;
+    document.getElementById('payItemPrice').textContent = p.price;
+    document.getElementById('payTotal').textContent = p.price;
+    document.getElementById('btnPayNow').textContent = 'Pay Now — ' + p.short;
+  }
+
+  function startPurchase(kind) {
     var user = currentUser || auth.currentUser;
     if (!user) {
       alert('Please sign in to buy a pack.');
       window.location.href = 'auth.html';
       return;
     }
+    setPaymentSummary(kind);
     openOverlay(payOverlay);
+  }
+
+  // Open payment (must be signed in)
+  document.getElementById('btnBuy').addEventListener('click', function () {
+    startPurchase('graded');
+  });
+
+  // Raw card purchase (new)
+  document.getElementById('btnBuyRaw').addEventListener('click', function () {
+    startPurchase('raw');
   });
 
   document.getElementById('payClose').addEventListener('click', function () {
@@ -412,7 +461,7 @@
   function startReveal(uid) {
     busy = true;
 
-    var pullPromise = pullCard(uid);
+    var pullPromise = pullCard(uid, selectedKind);
 
     openOverlay(videoOverlay);
     document.getElementById('videoStatus').textContent = 'Opening your pack...';
@@ -463,13 +512,17 @@
     closeOverlay(videoOverlay);
     try { ripVideo.pause(); } catch (e) {}
 
+    // Raw cards have no grade (new)
+    var isRaw = !card.grade;
+    var gradeLabel = isRaw ? 'Raw' : card.grader + ' ' + card.grade;
+
     document.getElementById('resultImg').src = card.imageUrl;
     document.getElementById('resultName').textContent = card.name;
-    document.getElementById('resultMeta').textContent = card.grader + ' ' + card.grade + ' · Market £' + card.market;
+    document.getElementById('resultMeta').textContent = gradeLabel + ' · Market £' + card.market;
     document.getElementById('resultBuyback').textContent = 'Locked buyback: £' + card.buyback.toFixed(2);
 
     var badge = document.getElementById('resultBadge');
-    badge.textContent = card.grader + ' ' + card.grade;
+    badge.textContent = gradeLabel;
     badge.className = 'badge ' + (card.grade === 10 ? 'badge-10' : 'badge-9');
 
     openOverlay(resultOverlay);
@@ -498,7 +551,7 @@
 
     var badge = document.createElement('span');
     badge.className = 'badge ' + (Number(p.grade) === 10 ? 'badge-10' : 'badge-9');
-    badge.textContent = (p.grader || '') + ' ' + (p.grade || '');
+    badge.textContent = Number(p.grade) ? (p.grader || '') + ' ' + p.grade : 'Raw';
 
     var name = document.createElement('div');
     name.className = 'vault-pull-name';
