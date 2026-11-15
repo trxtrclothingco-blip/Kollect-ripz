@@ -341,30 +341,30 @@
     return arr;
   }
 
-  // kind: 'graded' (default) or 'raw'. Raw cards are inventory items with type: "raw".
+  // kind: 'graded' (default) or 'raw'.
+  // Graded cards come from the "inventory" collection, raw cards from "rawInventory".
   function pullCard(uid, kind) {
     kind = kind || 'graded';
-    return db.collection('inventory')
+    var collName = kind === 'raw' ? 'rawInventory' : 'inventory';
+    return db.collection(collName)
       .where('status', '==', 'available')
       .get()
       .then(function (snap) {
         var ids = [];
-        snap.forEach(function (d) {
-          var isRawCard = d.data().type === 'raw';
-          if ((kind === 'raw') === isRawCard) ids.push(d.id);
-        });
+        snap.forEach(function (d) { ids.push(d.id); });
         if (!ids.length) throw new Error('SOLD_OUT');
         shuffle(ids);
-        return tryClaim(ids, 0, uid);
+        return tryClaim(ids, 0, uid, collName);
       });
   }
 
   // Claims one card inside a transaction. If someone else got it first,
   // it moves on to the next card in the shuffled list.
-  function tryClaim(ids, i, uid) {
+  function tryClaim(ids, i, uid, collName) {
+    collName = collName || 'inventory';
     if (i >= ids.length) return Promise.reject(new Error('SOLD_OUT'));
 
-    var invRef = db.collection('inventory').doc(ids[i]);
+    var invRef = db.collection(collName).doc(ids[i]);
     var ownRef = db.collection('users').doc(uid).collection('collection').doc(ids[i]);
 
     return db.runTransaction(function (tx) {
@@ -404,7 +404,7 @@
       });
     }).then(function (result) {
       if (result) return result;
-      return tryClaim(ids, i + 1, uid);
+      return tryClaim(ids, i + 1, uid, collName);
     });
   }
 
