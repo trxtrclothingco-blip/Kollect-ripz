@@ -99,7 +99,7 @@
           '</div>' +
           '<p class="text-dim" style="font-size:0.82rem;margin-bottom:10px">Locked buyback: £' + buyback + '</p>' +
           '<div class="flex gap-2" style="flex-wrap:wrap">' +
-            '<button class="btn btn-success btn-sm">Cash £' + buyback + '</button>' +
+            '<button class="btn btn-success btn-sm" data-action="cash" data-id="' + escapeHtml(c.id) + '" data-buyback="' + buyback + '">Cash £' + buyback + '</button>' +
             '<button class="btn btn-primary btn-sm" data-action="consign" data-id="' + escapeHtml(c.id) + '">Sell with Kollect</button>' +
             '<button class="btn btn-secondary btn-sm" data-action="withdraw" data-id="' + escapeHtml(c.id) + '">Get physical card</button>' +
           '</div>' +
@@ -108,7 +108,7 @@
     }).join('');
   }
 
-  // Sell with Kollect / Get physical card (new)
+  // Cash out / Sell with Kollect / Get physical card (new)
   grid.addEventListener('click', function (e) {
     var btn = e.target.closest('button[data-action]');
     if (!btn) return;
@@ -145,6 +145,20 @@
       }).catch(function (err) {
         btn.disabled = false;
         alert('Could not withdraw this card: ' + err.message);
+      });
+    }
+
+    if (action === 'cash') {
+      var amount = btn.getAttribute('data-buyback');
+      if (!confirm('Cash out this card for £' + amount + '? This cannot be undone.')) return;
+
+      btn.disabled = true;
+      cardRef.update({
+        status: 'cashed',
+        cashedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).catch(function (err) {
+        btn.disabled = false;
+        alert('Could not cash out this card: ' + err.message);
       });
     }
   });
