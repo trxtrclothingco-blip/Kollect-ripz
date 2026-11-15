@@ -698,8 +698,12 @@
           pulledAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        // Only "status" changes on the inventory card (matches your rules)
-        tx.update(invRef, { status: 'redeemed' });
+        // Mark the card redeemed and record who pulled it (so admin can ship it)
+        tx.update(invRef, {
+          status: 'redeemed',
+          redeemedBy: uid,
+          redeemedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
         tx.set(ownRef, owned);
 
         // Public feed entry (card details only, no user info)
