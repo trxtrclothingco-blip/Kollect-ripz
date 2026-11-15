@@ -193,6 +193,14 @@
           </ul>
           <button class="btn btn-primary btn-lg w-full" id="btnBuyRaw">Purchase for £4.50</button>
           <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
+
+          <!-- Recent raw pulls showcase (new) -->
+          <div class="pulls-showcase">
+            <h3>Recent Raw Pulls</h3>
+            <div class="pulls-track" id="rawPullsTrack">
+              <p class="pulls-empty">Loading recent pulls...</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -534,11 +542,12 @@
 })();
 </script>
 
-<!-- Recent pulls showcase (new) -->
+<!-- Recent pulls showcase: graded + raw (new) -->
 <script>
 (function () {
-  var track = document.getElementById('pullsTrack');
-  if (!track || !window.Kollect || !window.Kollect.db) return;
+  var gradedTrack = document.getElementById('pullsTrack');
+  var rawTrack = document.getElementById('rawPullsTrack');
+  if (!window.Kollect || !window.Kollect.db) return;
 
   function buildItem(p) {
     var item = document.createElement('div');
@@ -568,21 +577,38 @@
     return item;
   }
 
+  function render(track, list, emptyMsg) {
+    if (!track) return;
+    track.innerHTML = '';
+    if (!list.length) {
+      track.innerHTML = '<p class="pulls-empty">' + emptyMsg + '</p>';
+      return;
+    }
+    list.slice(0, 12).forEach(function (p) {
+      track.appendChild(buildItem(p));
+    });
+  }
+
+  // One live feed, split into graded (has a grade) and raw (no grade)
   window.Kollect.db.collection('pulls')
     .orderBy('pulledAt', 'desc')
-    .limit(12)
+    .limit(40)
     .onSnapshot(function (snap) {
-      track.innerHTML = '';
-      if (snap.empty) {
-        track.innerHTML = '<p class="pulls-empty">No pulls yet. Be the first!</p>';
-        return;
-      }
+      var graded = [];
+      var raw = [];
+
       snap.forEach(function (doc) {
-        track.appendChild(buildItem(doc.data()));
+        var p = doc.data();
+        if (Number(p.grade) > 0) graded.push(p);
+        else raw.push(p);
       });
+
+      render(gradedTrack, graded, 'No pulls yet. Be the first!');
+      render(rawTrack, raw, 'No raw pulls yet. Be the first!');
     }, function (err) {
       console.warn('Recent pulls failed:', err);
-      track.innerHTML = '<p class="pulls-empty">Recent pulls unavailable.</p>';
+      if (gradedTrack) gradedTrack.innerHTML = '<p class="pulls-empty">Recent pulls unavailable.</p>';
+      if (rawTrack) rawTrack.innerHTML = '<p class="pulls-empty">Recent pulls unavailable.</p>';
     });
 })();
 </script>
