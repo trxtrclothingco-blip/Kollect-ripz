@@ -47,6 +47,11 @@
         <div class="stat-value" id="statConsigned">0</div>
         <div class="stat-label">Consigned</div>
       </div>
+      <!-- Withdrawn box (new) -->
+      <div class="stat-card">
+        <div class="stat-value" id="statWithdrawn">0</div>
+        <div class="stat-label">Withdrawn</div>
+      </div>
     </div>
 
     <div class="grid-2">
@@ -162,15 +167,18 @@
     setText('statLocked', money(0));
     setText('statPacks', '0');
     setText('statConsigned', '0');
+    setText('statWithdrawn', '0');
     setText('acctPulledValue', money(0));
     setText('acctCashValue', money(0));
   }
 
   // Every card in users/{uid}/collection is one opened pack.
-  // status: missing or 'owned' = still owned, 'cashed' = bought back, 'consigned' = consigned.
+  // status: missing or 'owned' = still owned, 'cashed' = bought back,
+  // 'consigned' = consigned, 'withdrawn' = physical card requested.
   function updateStats(cards) {
     var owned = 0;
     var consigned = 0;
+    var withdrawn = 0;
     var lockedBuyback = 0;
     var totalPulledValue = 0;
     var totalCash = 0;
@@ -184,6 +192,8 @@
         totalCash += Number(c.buyback || 0);
       } else if (status === 'consigned') {
         consigned += 1;
+      } else if (status === 'withdrawn') {
+        withdrawn += 1;
       } else {
         owned += 1;
         lockedBuyback += Number(c.buyback || 0);
@@ -194,6 +204,7 @@
     setText('statLocked', money(lockedBuyback));
     setText('statPacks', String(cards.length));
     setText('statConsigned', String(consigned));
+    setText('statWithdrawn', String(withdrawn));
     setText('acctPulledValue', money(totalPulledValue));
     setText('acctCashValue', money(totalCash));
   }
