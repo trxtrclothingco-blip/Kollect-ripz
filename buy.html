@@ -97,7 +97,9 @@
     }
     .pulls-track::-webkit-scrollbar { height: 6px; }
     .pulls-track::-webkit-scrollbar-thumb { background: #2a2f3d; border-radius: 3px; }
-    .pull-item {
+    .vault-pull {
+      display: block;
+      box-sizing: border-box;
       flex: 0 0 calc((100% - 24px) / 3);
       scroll-snap-align: start;
       background: #0f1117;
@@ -107,15 +109,18 @@
       text-align: center;
       min-width: 0;
     }
-    .pull-item img {
+    .vault-pull img {
+      display: block;
       width: 100%;
+      height: auto;
       aspect-ratio: 3 / 4;
       object-fit: contain;
       border-radius: 6px;
-      margin-bottom: 8px;
+      margin: 0 auto 8px;
       background: #000;
     }
-    .pull-item .pull-name {
+    .vault-pull .badge { display: inline-block; }
+    .vault-pull-name {
       font-size: 0.78rem;
       font-weight: 600;
       margin-top: 6px;
@@ -123,7 +128,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .pull-item .pull-market { font-size: 0.75rem; color: #6b7280; }
+    .vault-pull-market { font-size: 0.75rem; color: #6b7280; }
     .pulls-empty { color: #6b7280; font-size: 0.85rem; }
   </style>
 </head>
@@ -484,7 +489,7 @@
 
   function buildItem(p) {
     var item = document.createElement('div');
-    item.className = 'pull-item';
+    item.className = 'vault-pull';
 
     var img = document.createElement('img');
     img.src = p.imageUrl || '';
@@ -496,11 +501,11 @@
     badge.textContent = (p.grader || '') + ' ' + (p.grade || '');
 
     var name = document.createElement('div');
-    name.className = 'pull-name';
+    name.className = 'vault-pull-name';
     name.textContent = p.name || 'Graded Card';
 
     var market = document.createElement('div');
-    market.className = 'pull-market';
+    market.className = 'vault-pull-market';
     market.textContent = 'Market £' + (Number(p.market) || 0);
 
     item.appendChild(img);
