@@ -128,6 +128,15 @@
 
         <form id="formUpload">
 
+          <!-- Card type (new) -->
+          <div class="form-group">
+            <label>Card Type *</label>
+            <select class="form-control" id="cardType" required>
+              <option value="graded">Graded Card</option>
+              <option value="raw">Raw Card</option>
+            </select>
+          </div>
+
           <div class="form-group">
             <label>Card Name *</label>
             <input type="text" class="form-control" id="cardName" required placeholder="e.g. Charizard VMAX" />
@@ -199,6 +208,28 @@
             </tbody>
           </table>
         </div>
+
+        <!-- Raw inventory (new) -->
+        <h2 style="font-size:1.15rem;margin:24px 0 12px">Raw Inventory</h2>
+
+        <div class="inv-table-wrap">
+          <table class="inv-table">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Card</th>
+                <th>Market</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+
+            <tbody id="rawInventoryBody">
+              <tr>
+                <td colspan="4" class="text-center text-dim" style="padding:32px">No raw cards yet</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
     </div>
@@ -228,6 +259,23 @@
     var UPLOAD_PRESET = (window.Kollect && window.Kollect.CLOUDINARY_UPLOAD_PRESET) || '';
 
     var selectedFile = null;
+
+    // Raw / graded switch (new)
+    // Raw cards hide the grader, grade and serial fields and are not required
+    var cardTypeEl = document.getElementById('cardType');
+
+    function applyCardType() {
+      var isRaw = cardTypeEl.value === 'raw';
+
+      ['cardGrader', 'cardGrade', 'cardSerial'].forEach(function (id) {
+        var el = document.getElementById(id);
+        el.closest('.form-group').style.display = isRaw ? 'none' : '';
+        el.required = !isRaw;
+      });
+    }
+
+    cardTypeEl.addEventListener('change', applyCardType);
+    applyCardType();
 
     function showToast(msg) {
       var t = document.getElementById('toast');
@@ -312,15 +360,18 @@
 
         .then(function (imageUrl) {
 
-          return db.collection('inventory').add({
+          // Graded cards go to "inventory", raw cards go to "rawInventory" (new)
+          var isRaw = document.getElementById('cardType').value === 'raw';
+
+          var cardData = {
 
             name: document.getElementById('cardName').value.trim(),
 
-            grader: document.getElementById('cardGrader').value,
+            grader: isRaw ? '' : document.getElementById('cardGrader').value,
 
-            grade: Number(document.getElementById('cardGrade').value),
+            grade: isRaw ? 0 : Number(document.getElementById('cardGrade').value),
 
-            serial: document.getElementById('cardSerial').value.trim(),
+            serial: isRaw ? '' : document.getElementById('cardSerial').value.trim(),
 
             market: Number(document.getElementById('cardMarket').value),
 
@@ -330,12 +381,18 @@
 
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
 
-          });
+          };
+
+          if (isRaw) cardData.type = 'raw';
+
+          return db.collection(isRaw ? 'rawInventory' : 'inventory').add(cardData);
         })
 
         .then(function () {
 
           e.target.reset();
+
+          applyCardType();
 
           selectedFile = null;
 
@@ -413,6 +470,57 @@
             '">' + escapeHtml(c.grader) + ' ' + c.grade + '</span></td>' +
 
             '<td class="text-dim">' + escapeHtml(c.serial) + '</td>' +
+
+            '<td>£' + Number(c.market || 0).toFixed(2) + '</td>' +
+
+            '<td><span class="badge ' + sc + '">' + sl + '</span></td>' +
+
+            '</tr>';
+
+        }).join('');
+
+      }, function (err) {
+
+        console.error(err);
+
+      });
+
+    // Raw inventory list (new)
+    db.collection('rawInventory')
+      .orderBy('createdAt', 'desc')
+      .onSnapshot(function (snap) {
+
+        var rawCards = [];
+
+        snap.forEach(function (doc) {
+          rawCards.push(doc.data());
+        });
+
+        var rawBody = document.getElementById('rawInventoryBody');
+
+        if (!rawCards.length) {
+
+          rawBody.innerHTML =
+            '<tr><td colspan="4" class="text-center text-dim" style="padding:32px">No raw cards yet</td></tr>';
+
+          return;
+        }
+
+        rawBody.innerHTML = rawCards.map(function (c) {
+
+          var sc = c.status === 'available'
+            ? 'badge-available'
+            : 'badge-redeemed';
+
+          var sl = c.status === 'available'
+            ? 'Available'
+            : 'Redeemed';
+
+          return '<tr>' +
+
+            '<td><img src="' + (c.imageUrl || '') + '" alt="" /></td>' +
+
+            '<td><strong>' + escapeHtml(c.name) + '</strong></td>' +
 
             '<td>£' + Number(c.market || 0).toFixed(2) + '</td>' +
 
