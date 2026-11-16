@@ -192,39 +192,32 @@
       box-shadow: 0 0 70px rgba(251, 191, 36, 0.55);
     }
 
-    /* ===== NEW: GRADED TIERS ===== */
-    .tier-tabs {
+    /* ===== GRADED TIERS ===== */
+
+    /* Pack carousel (replaces the clickable tier tabs) */
+    .pack-carousel {
+      position: relative;
       display: flex;
-      gap: 8px;
       overflow-x: auto;
+      scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch;
-      padding-bottom: 8px;
-      margin-bottom: 14px;
+      scrollbar-width: none;
+      padding: 30px 0;
     }
-    .tier-tabs::-webkit-scrollbar { height: 0; }
-    .tier-tab {
-      flex: 0 0 auto;
+    .pack-carousel::-webkit-scrollbar { display: none; }
+    .pack-carousel::before,
+    .pack-carousel::after { content: ''; flex: 0 0 25%; }
+    .carousel-slide {
+      flex: 0 0 50%;
       display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 9px 14px;
-      border-radius: 999px;
-      border: 1px solid #2a2f3d;
-      background: #0f1117;
-      color: #9ca3af;
-      font: inherit;
-      font-size: 0.85rem;
-      font-weight: 600;
+      justify-content: center;
+      scroll-snap-align: center;
       cursor: pointer;
-      white-space: nowrap;
+      transform: scale(0.72);
+      opacity: 0.45;
+      transition: transform 0.25s ease, opacity 0.25s ease;
     }
-    .tier-tab .dot { width: 10px; height: 10px; border-radius: 50%; }
-    .tier-tab.active {
-      color: #f0f2f5;
-      border-color: var(--tier-color, #8b5cf6);
-      box-shadow: 0 0 0 1px var(--tier-color, #8b5cf6) inset;
-      background: #1a1d27;
-    }
+    .carousel-slide.active { transform: scale(1); opacity: 1; cursor: default; }
 
     .tier-range {
       display: flex;
@@ -299,20 +292,10 @@
         <div class="pack-card">
           <span class="badge badge-10" style="margin-bottom:12px">Grade 9 or 10 Guaranteed</span>
 
-          <!-- Tier selector (built by JS) -->
-          <div class="tier-tabs" id="tierTabs"></div>
-
           <h2 id="tierName">Graded Card</h2>
 
-          <div class="foil-pack" id="foilPack" data-tier="silver" aria-hidden="true">
-            <div class="foil-crimp foil-crimp-top"></div>
-            <div class="foil-body">
-              <div class="foil-logo">Kollect<span>Vault</span></div>
-              <div class="foil-star">?</div>
-              <div class="foil-tag" id="foilTag">Graded 9 / 10</div>
-            </div>
-            <div class="foil-crimp foil-crimp-bottom"></div>
-          </div>
+          <!-- Pack carousel (built by JS) -->
+          <div class="pack-carousel" id="packCarousel"></div>
 
           <div class="tier-range">
             <div><small>Min Pull</small><strong id="tierMin">£0</strong></div>
@@ -538,51 +521,64 @@
   var resultOverlay = document.getElementById('resultOverlay');
   var ripVideo      = document.getElementById('ripVideo');
 
-  // ===== TIER UI =====
-  var tabsEl = document.getElementById('tierTabs');
+  // ===== PACK CAROUSEL =====
+  var carouselEl = document.getElementById('packCarousel');
 
-  function buildTabs() {
-    tabsEl.innerHTML = '';
+  function buildCarousel() {
+    carouselEl.innerHTML = '';
     TIERS.forEach(function (t) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'tier-tab';
-      b.setAttribute('data-id', t.id);
-      b.style.setProperty('--tier-color', t.color);
-
-      var dot = document.createElement('span');
-      dot.className = 'dot';
-      dot.style.background = t.color;
-
-      var label = document.createElement('span');
-      label.textContent = t.name + ' · ' + money(t.price);
-
-      b.appendChild(dot);
-      b.appendChild(label);
-      b.addEventListener('click', function () {
-        selectedTier = t;
-        renderTier();
-      });
-      tabsEl.appendChild(b);
+      var slide = document.createElement('div');
+      slide.className = 'carousel-slide';
+      slide.setAttribute('data-id', t.id);
+      slide.innerHTML =
+        '<div class="foil-pack" data-tier="' + t.id + '" aria-hidden="true">' +
+          '<div class="foil-crimp foil-crimp-top"></div>' +
+          '<div class="foil-body">' +
+            '<div class="foil-logo">Kollect<span>Vault</span></div>' +
+            '<div class="foil-star">?</div>' +
+            '<div class="foil-tag">' + t.name + '</div>' +
+          '</div>' +
+          '<div class="foil-crimp foil-crimp-bottom"></div>' +
+        '</div>';
+      slide.addEventListener('click', function () { centerSlide(t.id, true); });
+      carouselEl.appendChild(slide);
     });
   }
+
+  function centerSlide(id, smooth) {
+    var s = carouselEl.querySelector('.carousel-slide[data-id="' + id + '"]');
+    if (!s) return;
+    carouselEl.scrollTo({
+      left: s.offsetLeft - (carouselEl.clientWidth - s.offsetWidth) / 2,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  }
+
+  carouselEl.addEventListener('scroll', function () {
+    var center = carouselEl.scrollLeft + carouselEl.clientWidth / 2;
+    var best = null, bestDist = Infinity;
+    Array.prototype.forEach.call(carouselEl.children, function (s) {
+      var d = Math.abs(s.offsetLeft + s.offsetWidth / 2 - center);
+      if (d < bestDist) { bestDist = d; best = s; }
+    });
+    if (!best) return;
+    var id = best.getAttribute('data-id');
+    if (id !== selectedTier.id) {
+      selectedTier = TIERS.filter(function (t) { return t.id === id; })[0];
+      renderTier();
+    }
+  });
 
   function renderTier() {
     var t = selectedTier;
 
-    // tabs
-    Array.prototype.forEach.call(tabsEl.children, function (el) {
-      var active = el.getAttribute('data-id') === t.id;
-      el.classList.toggle('active', active);
-      if (active) {
-        try { el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } catch (e) {}
-      }
+    // carousel highlight
+    Array.prototype.forEach.call(carouselEl.children, function (el) {
+      el.classList.toggle('active', el.getAttribute('data-id') === t.id);
     });
 
     // text
     document.getElementById('tierName').textContent = t.name + ' Pack';
-    document.getElementById('foilTag').textContent = t.name;
-    document.getElementById('foilPack').setAttribute('data-tier', t.id);
     document.getElementById('tierMin').textContent = money(t.min);
     document.getElementById('tierMax').textContent = t.max === null ? money(t.min * 5) + '+' : money(t.max);
     if (t.max === null) document.getElementById('tierMax').textContent = 'No limit';
@@ -777,7 +773,9 @@
 
     closeOverlay(payOverlay);
 
-    var packEl = document.getElementById(selectedKind === 'raw' ? 'foilPackRaw' : 'foilPack');
+    var packEl = selectedKind === 'raw'
+      ? document.getElementById('foilPackRaw')
+      : document.querySelector('.carousel-slide.active .foil-pack');
     if (!packEl) {
       startReveal(user.uid);
       return;
@@ -873,8 +871,9 @@
   });
 
   // Start
-  buildTabs();
+  buildCarousel();
   renderTier();
+  requestAnimationFrame(function () { centerSlide(selectedTier.id, false); });
   loadStock();
 })();
 </script>
