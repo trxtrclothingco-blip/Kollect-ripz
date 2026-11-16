@@ -423,6 +423,45 @@
     $('sFree').textContent = vouchers.length;
   }
 
+  // ===== MONTHLY LEADERBOARD PRIZES (added automatically to My Free Packs) =====
+  var LB_PRIZES = ['diamond', 'gold', 'gold'];   // 1st, 2nd, 3rd (matches buy.html)
+  var LB_PLACES = ['1st', '2nd', '3rd'];
+  function mKey(d) { return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2); }
+  var grantRan = false;
+  function grantMonthly() {
+    if (grantRan || !user) return;
+    grantRan = true;
+    var uid = user.uid, checked = ud.lbChecked || [], n = new Date(), keys = [];
+    for (var i = 1; i <= 6; i++) {
+      var k = mKey(new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth() - i, 1)));
+      if (checked.indexOf(k) < 0) keys.push(k);
+    }
+    keys.reduce(function (chain, key) {
+      return chain.then(function () {
+        return db.collection('leaderboards').doc(key).collection('entries').orderBy('packs', 'desc').limit(10).get().then(function (snap) {
+          var rows = [];
+          snap.forEach(function (d) { var x = d.data(); rows.push({ id: d.id, packs: Number(x.packs) || 0, t: x.updatedAt && x.updatedAt.toMillis ? x.updatedAt.toMillis() : 0 }); });
+          rows.sort(function (a, b) { return b.packs - a.packs || a.t - b.t; });
+          var rank = -1;
+          rows.forEach(function (r0, idx) { if (r0.id === uid) rank = idx; });
+          var ref = db.collection('users').doc(uid);
+          if (rank < 0 || rank > 2) return ref.set({ lbChecked: FV.arrayUnion(key) }, { merge: true });
+          return db.runTransaction(function (tx) {
+            return tx.get(ref).then(function (s) {
+              var d0 = s.exists ? s.data() : {};
+              if ((d0.lbChecked || []).indexOf(key) > -1) return false;
+              addPacks(tx, [{ tier: LB_PRIZES[rank], qty: 1 }], 'leaderboard:' + key);
+              tx.set(ref, { lbChecked: FV.arrayUnion(key) }, { merge: true });
+              return true;
+            });
+          }).then(function (won) {
+            if (won) toast('🏆 You finished ' + LB_PLACES[rank] + ' on the ' + key + ' leaderboard! A free ' + cap(LB_PRIZES[rank]) + ' pack was added to My Free Packs.');
+          });
+        });
+      });
+    }, Promise.resolve()).catch(function (e) { console.warn('Leaderboard prizes failed:', e); grantRan = false; });
+  }
+
   // ===== POINTS SHOP =====
   function cost(i) { return Math.round(i.price * 1 / POINT_VALUE); }
   function renderShop() {
@@ -462,9 +501,9 @@
 
   auth.onAuthStateChanged(function (u) {
     user = u;
-    if (!u) { ud = {}; owned = 0; vouchers = []; renderAll(); return; }
+    if (!u) { ud = {}; owned = 0; vouchers = []; grantRan = false; renderAll(); return; }
     var ref = db.collection('users').doc(u.uid);
-    ref.onSnapshot(function (s) { ud = s.exists ? s.data() : {}; renderAll(); });
+    ref.onSnapshot(function (s) { ud = s.exists ? s.data() : {}; renderAll(); grantMonthly(); });
     ref.collection('collection').get().then(function (s) { owned = s.size; renderAll(); }).catch(function () {});
     ref.collection('rewardPacks').where('status', '==', 'unused').onSnapshot(function (s) {
       vouchers = []; s.forEach(function (d) { var x = d.data(); x.id = d.id; vouchers.push(x); }); renderFree();
