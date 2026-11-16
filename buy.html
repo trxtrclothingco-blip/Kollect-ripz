@@ -149,6 +149,18 @@
     }
     .foil-pack.raw .foil-star { font-size: 3rem; }
 
+    /* Football raw pack colour (green) */
+    .foil-pack.raw.football {
+      filter: drop-shadow(0 22px 28px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 34px rgba(74, 222, 128, 0.5));
+    }
+    .foil-pack.raw.football .foil-crimp {
+      background: linear-gradient(120deg, #14532d, #22c55e, #bbf7d0, #16a34a, #14532d);
+      background-size: 300% 100%;
+    }
+    .foil-pack.raw.football .foil-body {
+      background: linear-gradient(160deg, #14532d 0%, #16a34a 35%, #86efac 65%, #15803d 100%);
+    }
+
     .foil-pack.burst { animation: packBurst 0.4s ease-in forwards; }
     @keyframes packBurst {
       0%   { transform: scale(1); filter: brightness(1); }
@@ -190,6 +202,32 @@
     .reveal-card-box.gold {
       border-color: #fbbf24;
       box-shadow: 0 0 70px rgba(251, 191, 36, 0.55);
+    }
+
+    /* ===== CATEGORY SELECTOR ===== */
+    .cat-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .cat-tab {
+      flex: 1 1 0;
+      padding: 12px 16px;
+      border-radius: 999px;
+      border: 1px solid #2a2f3d;
+      background: #0f1117;
+      color: #9ca3af;
+      font: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .cat-tab.active {
+      color: #f0f2f5;
+      background: #1a1d27;
+      border-color: #8b5cf6;
+      box-shadow: 0 0 0 1px #8b5cf6 inset;
     }
 
     /* ===== GRADED TIERS ===== */
@@ -285,76 +323,157 @@
 
   <div class="container page-content">
     <h1 class="page-title">Buy a Mystery Pack</h1>
-    <p class="page-sub">Pick a tier. One graded Grade 9 or Grade 10 Pokemon card from that tier's value range. Instant reveal.</p>
+    <p class="page-sub">Pick a category and a tier. One graded Grade 9 or Grade 10 card from that tier's value range, or a raw card. Instant reveal.</p>
+
+    <!-- Category selector -->
+    <div class="cat-tabs" id="catTabs">
+      <button type="button" class="cat-tab active" data-cat="pokemon">Pokemon</button>
+      <button type="button" class="cat-tab" data-cat="football">Football</button>
+    </div>
 
     <div class="grid-2" style="align-items:start">
       <div>
-        <div class="pack-card">
-          <span class="badge badge-10" style="margin-bottom:12px">Grade 9 or 10 Guaranteed</span>
 
-          <h2 id="tierName">Graded Card</h2>
+        <!-- ================= POKEMON ================= -->
+        <div id="pokemonPanel">
+          <div class="pack-card">
+            <span class="badge badge-10" style="margin-bottom:12px">Grade 9 or 10 Guaranteed</span>
 
-          <!-- Pack carousel (built by JS) -->
-          <div class="pack-carousel" id="packCarousel"></div>
+            <h2 id="pkTierName">Graded Card</h2>
 
-          <div class="tier-range">
-            <div><small>Min Pull</small><strong id="tierMin">£0</strong></div>
-            <div><small>Max Pull</small><strong id="tierMax">£0</strong></div>
+            <!-- Pack carousel (built by JS) -->
+            <div class="pack-carousel" id="pkCarousel"></div>
+
+            <div class="tier-range">
+              <div><small>Min Pull</small><strong id="pkTierMin">£0</strong></div>
+              <div><small>Max Pull</small><strong id="pkTierMax">£0</strong></div>
+            </div>
+            <p class="tier-stock" id="pkTierStock"></p>
+
+            <div class="pack-price" id="pkTierPrice">£25 <small>/ pack</small></div>
+            <ul class="pack-features">
+              <li>One graded Pokemon card (PSA / CGC / BGS)</li>
+              <li>Grade 9 or Grade 10 only</li>
+              <li id="pkTierValueLine">Market value in this tier's range</li>
+              <li>Instant digital reveal + ownership</li>
+              <li>Locked cash buyback at open</li>
+              <li>Or consign via Kollect in one click</li>
+            </ul>
+            <button class="btn btn-primary btn-lg w-full" id="pkBuy">Purchase</button>
+            <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
+
+            <div class="pulls-showcase">
+              <h3>Recent Pulls</h3>
+              <div class="pulls-track" id="pkPullsTrack">
+                <p class="pulls-empty">Loading recent pulls...</p>
+              </div>
+            </div>
           </div>
-          <p class="tier-stock" id="tierStock"></p>
 
-          <div class="pack-price" id="tierPrice">£25 <small>/ pack</small></div>
-          <ul class="pack-features">
-            <li>One graded Pokemon card (PSA / CGC / BGS)</li>
-            <li>Grade 9 or Grade 10 only</li>
-            <li id="tierValueLine">Market value in this tier's range</li>
-            <li>Instant digital reveal + ownership</li>
-            <li>Locked cash buyback at open</li>
-            <li>Or consign via Kollect in one click</li>
-          </ul>
-          <button class="btn btn-primary btn-lg w-full" id="btnBuy">Purchase</button>
-          <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
+          <!-- Raw card option -->
+          <div class="pack-card" style="margin-top:20px">
+            <span class="badge badge-9" style="margin-bottom:12px">Raw Card</span>
+            <h2>Raw Card</h2>
 
-          <div class="pulls-showcase">
-            <h3>Recent Pulls</h3>
-            <div class="pulls-track" id="pullsTrack">
-              <p class="pulls-empty">Loading recent pulls...</p>
+            <div class="foil-pack raw" id="pkFoilRaw" aria-hidden="true">
+              <div class="foil-crimp foil-crimp-top"></div>
+              <div class="foil-body">
+                <div class="foil-logo">Kollect<span>Vault</span></div>
+                <div class="foil-star">?</div>
+                <div class="foil-tag">Raw Card</div>
+              </div>
+              <div class="foil-crimp foil-crimp-bottom"></div>
+            </div>
+
+            <div class="pack-price">£4.50 <small>/ card</small></div>
+            <ul class="pack-features">
+              <li>One raw (ungraded) Pokemon card</li>
+              <li>Instant digital reveal + ownership</li>
+              <li>Locked cash buyback at open</li>
+              <li>Or consign via Kollect in one click</li>
+            </ul>
+            <button class="btn btn-primary btn-lg w-full" id="pkBuyRaw">Purchase for £4.50</button>
+            <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
+
+            <div class="pulls-showcase">
+              <h3>Recent Raw Pulls</h3>
+              <div class="pulls-track" id="pkRawPullsTrack">
+                <p class="pulls-empty">Loading recent pulls...</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Raw card option -->
-        <div class="pack-card" style="margin-top:20px">
-          <span class="badge badge-9" style="margin-bottom:12px">Raw Card</span>
-          <h2>Raw Card</h2>
+        <!-- ================= FOOTBALL ================= -->
+        <div id="footballPanel" style="display:none">
+          <div class="pack-card">
+            <span class="badge badge-10" style="margin-bottom:12px">Grade 9 or 10 Guaranteed</span>
 
-          <div class="foil-pack raw" id="foilPackRaw" aria-hidden="true">
-            <div class="foil-crimp foil-crimp-top"></div>
-            <div class="foil-body">
-              <div class="foil-logo">Kollect<span>Vault</span></div>
-              <div class="foil-star">?</div>
-              <div class="foil-tag">Raw Card</div>
+            <h2 id="fbTierName">Graded Card</h2>
+
+            <!-- Pack carousel (built by JS) -->
+            <div class="pack-carousel" id="fbCarousel"></div>
+
+            <div class="tier-range">
+              <div><small>Min Pull</small><strong id="fbTierMin">£0</strong></div>
+              <div><small>Max Pull</small><strong id="fbTierMax">£0</strong></div>
             </div>
-            <div class="foil-crimp foil-crimp-bottom"></div>
+            <p class="tier-stock" id="fbTierStock"></p>
+
+            <div class="pack-price" id="fbTierPrice">£25 <small>/ pack</small></div>
+            <ul class="pack-features">
+              <li>One graded football card (PSA / CGC / BGS)</li>
+              <li>Grade 9 or Grade 10 only</li>
+              <li id="fbTierValueLine">Market value in this tier's range</li>
+              <li>Instant digital reveal + ownership</li>
+              <li>Locked cash buyback at open</li>
+              <li>Or consign via Kollect in one click</li>
+            </ul>
+            <button class="btn btn-primary btn-lg w-full" id="fbBuy">Purchase</button>
+            <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
+
+            <div class="pulls-showcase">
+              <h3>Recent Pulls</h3>
+              <div class="pulls-track" id="fbPullsTrack">
+                <p class="pulls-empty">Loading recent pulls...</p>
+              </div>
+            </div>
           </div>
 
-          <div class="pack-price">£4.50 <small>/ card</small></div>
-          <ul class="pack-features">
-            <li>One raw (ungraded) Pokemon card</li>
-            <li>Instant digital reveal + ownership</li>
-            <li>Locked cash buyback at open</li>
-            <li>Or consign via Kollect in one click</li>
-          </ul>
-          <button class="btn btn-primary btn-lg w-full" id="btnBuyRaw">Purchase for £4.50</button>
-          <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
+          <!-- Raw card option -->
+          <div class="pack-card" style="margin-top:20px">
+            <span class="badge badge-9" style="margin-bottom:12px">Raw Card</span>
+            <h2>Raw Card</h2>
 
-          <div class="pulls-showcase">
-            <h3>Recent Raw Pulls</h3>
-            <div class="pulls-track" id="rawPullsTrack">
-              <p class="pulls-empty">Loading recent pulls...</p>
+            <div class="foil-pack raw football" id="fbFoilRaw" aria-hidden="true">
+              <div class="foil-crimp foil-crimp-top"></div>
+              <div class="foil-body">
+                <div class="foil-logo">Kollect<span>Vault</span></div>
+                <div class="foil-star">?</div>
+                <div class="foil-tag">Raw Card</div>
+              </div>
+              <div class="foil-crimp foil-crimp-bottom"></div>
+            </div>
+
+            <div class="pack-price">£4.50 <small>/ card</small></div>
+            <ul class="pack-features">
+              <li>One raw (ungraded) football card</li>
+              <li>Instant digital reveal + ownership</li>
+              <li>Locked cash buyback at open</li>
+              <li>Or consign via Kollect in one click</li>
+            </ul>
+            <button class="btn btn-primary btn-lg w-full" id="fbBuyRaw">Purchase for £4.50</button>
+            <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
+
+            <div class="pulls-showcase">
+              <h3>Recent Raw Pulls</h3>
+              <div class="pulls-track" id="fbRawPullsTrack">
+                <p class="pulls-empty">Loading recent pulls...</p>
+              </div>
             </div>
           </div>
         </div>
+
       </div>
 
       <div>
@@ -468,13 +587,13 @@
   var busy = false;
 
   // =====================================================================
-  // GRADED TIERS — EDIT THESE
+  // GRADED TIERS — EDIT THESE (one list per category)
   // price = what the customer pays
   // min / max = the card's "market" value range that tier can pull
   // max: null = no upper limit
   // A card is eligible if min <= market <= max
   // =====================================================================
-  var TIERS = [
+  var POKEMON_TIERS = [
     { id: 'bronze',   name: 'Bronze',   price: 10,  min: 8,   max: 25,   color: '#c2713a' },
     { id: 'silver',   name: 'Silver',   price: 25,  min: 20,  max: 60,   color: '#cbd5e1' },
     { id: 'gold',     name: 'Gold',     price: 50,  min: 40,  max: 120,  color: '#f59e0b' },
@@ -482,11 +601,46 @@
     { id: 'diamond',  name: 'Diamond',  price: 250, min: 200, max: null, color: '#38bdf8' }
   ];
 
-  var selectedTier = TIERS[1]; // starts on Silver (the old £25 pack)
-  var selectedKind = 'graded';
-  var stockByTier = null;       // filled in once inventory loads
+  var FOOTBALL_TIERS = [
+    { id: 'bronze',   name: 'Bronze',   price: 10,  min: 8,   max: 25,   color: '#c2713a' },
+    { id: 'silver',   name: 'Silver',   price: 25,  min: 20,  max: 60,   color: '#cbd5e1' },
+    { id: 'gold',     name: 'Gold',     price: 50,  min: 40,  max: 120,  color: '#f59e0b' },
+    { id: 'platinum', name: 'Platinum', price: 100, min: 80,  max: 300,  color: '#8b5cf6' },
+    { id: 'diamond',  name: 'Diamond',  price: 250, min: 200, max: null, color: '#38bdf8' }
+  ];
 
-  var RAW_PACK = { label: 'Raw Card', price: 4.5 };
+  // =====================================================================
+  // CATEGORIES
+  // prefix = id prefix used in the HTML for that category
+  // gradedColl / rawColl = Firestore inventory collections
+  // =====================================================================
+  var CATS = {
+    pokemon: {
+      id: 'pokemon', prefix: 'pk', label: 'Pokemon',
+      gradedColl: 'inventory', rawColl: 'rawInventory',
+      tiers: POKEMON_TIERS,
+      rawPack: { label: 'Raw Card', price: 4.5 }
+    },
+    football: {
+      id: 'football', prefix: 'fb', label: 'Football',
+      gradedColl: 'footballInventory', rawColl: 'footballRawInventory',
+      tiers: FOOTBALL_TIERS,
+      rawPack: { label: 'Raw Card', price: 4.5 }
+    }
+  };
+  var CAT_IDS = ['pokemon', 'football'];
+
+  var selectedCat = 'pokemon';
+  var selectedKind = 'graded';
+  var selectedTier = {
+    pokemon: POKEMON_TIERS[1],   // starts on Silver (the old £25 pack)
+    football: FOOTBALL_TIERS[1]
+  };
+  var stockByTier = { pokemon: null, football: null };  // filled in once inventory loads
+
+  function el(cat, name) {
+    return document.getElementById(CATS[cat].prefix + name);
+  }
 
   function money(n) {
     return '£' + Number(n).toLocaleString('en-GB', { minimumFractionDigits: (n % 1 ? 2 : 0), maximumFractionDigits: 2 });
@@ -505,14 +659,14 @@
     currentUser = user;
   });
 
-  function openOverlay(el) {
-    el.classList.add('active');
-    el.style.display = 'flex';
-    el.style.zIndex = '9999';
+  function openOverlay(e) {
+    e.classList.add('active');
+    e.style.display = 'flex';
+    e.style.zIndex = '9999';
   }
-  function closeOverlay(el) {
-    el.classList.remove('active');
-    el.style.display = 'none';
+  function closeOverlay(e) {
+    e.classList.remove('active');
+    e.style.display = 'none';
   }
 
   // Elements
@@ -521,12 +675,31 @@
   var resultOverlay = document.getElementById('resultOverlay');
   var ripVideo      = document.getElementById('ripVideo');
 
-  // ===== PACK CAROUSEL =====
-  var carouselEl = document.getElementById('packCarousel');
+  // ===== CATEGORY SELECTOR =====
+  function setCategory(cat) {
+    selectedCat = cat;
+    Array.prototype.forEach.call(document.querySelectorAll('#catTabs .cat-tab'), function (b) {
+      b.classList.toggle('active', b.getAttribute('data-cat') === cat);
+    });
+    CAT_IDS.forEach(function (c) {
+      document.getElementById(c + 'Panel').style.display = (c === cat) ? '' : 'none';
+    });
+    renderTier(cat);
+    // Carousel can only be measured once its panel is visible
+    requestAnimationFrame(function () { centerSlide(cat, selectedTier[cat].id, false); });
+  }
 
-  function buildCarousel() {
+  Array.prototype.forEach.call(document.querySelectorAll('#catTabs .cat-tab'), function (b) {
+    b.addEventListener('click', function () {
+      setCategory(b.getAttribute('data-cat'));
+    });
+  });
+
+  // ===== PACK CAROUSEL =====
+  function buildCarousel(cat) {
+    var carouselEl = el(cat, 'Carousel');
     carouselEl.innerHTML = '';
-    TIERS.forEach(function (t) {
+    CATS[cat].tiers.forEach(function (t) {
       var slide = document.createElement('div');
       slide.className = 'carousel-slide';
       slide.setAttribute('data-id', t.id);
@@ -540,12 +713,28 @@
           '</div>' +
           '<div class="foil-crimp foil-crimp-bottom"></div>' +
         '</div>';
-      slide.addEventListener('click', function () { centerSlide(t.id, true); });
+      slide.addEventListener('click', function () { centerSlide(cat, t.id, true); });
       carouselEl.appendChild(slide);
+    });
+
+    carouselEl.addEventListener('scroll', function () {
+      var center = carouselEl.scrollLeft + carouselEl.clientWidth / 2;
+      var best = null, bestDist = Infinity;
+      Array.prototype.forEach.call(carouselEl.children, function (s) {
+        var d = Math.abs(s.offsetLeft + s.offsetWidth / 2 - center);
+        if (d < bestDist) { bestDist = d; best = s; }
+      });
+      if (!best) return;
+      var id = best.getAttribute('data-id');
+      if (id !== selectedTier[cat].id) {
+        selectedTier[cat] = CATS[cat].tiers.filter(function (t) { return t.id === id; })[0];
+        renderTier(cat);
+      }
     });
   }
 
-  function centerSlide(id, smooth) {
+  function centerSlide(cat, id, smooth) {
+    var carouselEl = el(cat, 'Carousel');
     var s = carouselEl.querySelector('.carousel-slide[data-id="' + id + '"]');
     if (!s) return;
     carouselEl.scrollTo({
@@ -554,46 +743,32 @@
     });
   }
 
-  carouselEl.addEventListener('scroll', function () {
-    var center = carouselEl.scrollLeft + carouselEl.clientWidth / 2;
-    var best = null, bestDist = Infinity;
-    Array.prototype.forEach.call(carouselEl.children, function (s) {
-      var d = Math.abs(s.offsetLeft + s.offsetWidth / 2 - center);
-      if (d < bestDist) { bestDist = d; best = s; }
-    });
-    if (!best) return;
-    var id = best.getAttribute('data-id');
-    if (id !== selectedTier.id) {
-      selectedTier = TIERS.filter(function (t) { return t.id === id; })[0];
-      renderTier();
-    }
-  });
-
-  function renderTier() {
-    var t = selectedTier;
+  function renderTier(cat) {
+    var t = selectedTier[cat];
+    var carouselEl = el(cat, 'Carousel');
 
     // carousel highlight
-    Array.prototype.forEach.call(carouselEl.children, function (el) {
-      el.classList.toggle('active', el.getAttribute('data-id') === t.id);
+    Array.prototype.forEach.call(carouselEl.children, function (e) {
+      e.classList.toggle('active', e.getAttribute('data-id') === t.id);
     });
 
     // text
-    document.getElementById('tierName').textContent = t.name + ' Pack';
-    document.getElementById('tierMin').textContent = money(t.min);
-    document.getElementById('tierMax').textContent = t.max === null ? money(t.min * 5) + '+' : money(t.max);
-    if (t.max === null) document.getElementById('tierMax').textContent = 'No limit';
-    document.getElementById('tierPrice').innerHTML = money(t.price) + ' <small>/ pack</small>';
-    document.getElementById('tierValueLine').textContent =
+    el(cat, 'TierName').textContent = t.name + ' Pack';
+    el(cat, 'TierMin').textContent = money(t.min);
+    el(cat, 'TierMax').textContent = t.max === null ? money(t.min * 5) + '+' : money(t.max);
+    if (t.max === null) el(cat, 'TierMax').textContent = 'No limit';
+    el(cat, 'TierPrice').innerHTML = money(t.price) + ' <small>/ pack</small>';
+    el(cat, 'TierValueLine').textContent =
       'Market value ' + money(t.min) + (t.max === null ? ' and up' : ' – ' + money(t.max));
 
     // stock + button
-    var btn = document.getElementById('btnBuy');
-    var stockEl = document.getElementById('tierStock');
+    var btn = el(cat, 'Buy');
+    var stockEl = el(cat, 'TierStock');
     stockEl.className = 'tier-stock';
     var soldOut = false;
 
-    if (stockByTier) {
-      var n = stockByTier[t.id] || 0;
+    if (stockByTier[cat]) {
+      var n = stockByTier[cat][t.id] || 0;
       if (n === 0) {
         stockEl.textContent = 'Sold out';
         stockEl.classList.add('out');
@@ -613,23 +788,28 @@
   }
 
   // Counts available graded cards per tier (best effort; page still works if it fails)
-  function loadStock() {
-    db.collection('inventory')
+  function loadStock(cat) {
+    var C = CATS[cat];
+    db.collection(C.gradedColl)
       .where('status', '==', 'available')
       .get()
       .then(function (snap) {
         var counts = {};
-        TIERS.forEach(function (t) { counts[t.id] = 0; });
+        C.tiers.forEach(function (t) { counts[t.id] = 0; });
         snap.forEach(function (d) {
           var m = d.data().market;
-          TIERS.forEach(function (t) { if (inTier(m, t)) counts[t.id]++; });
+          C.tiers.forEach(function (t) { if (inTier(m, t)) counts[t.id]++; });
         });
-        stockByTier = counts;
-        renderTier();
+        stockByTier[cat] = counts;
+        renderTier(cat);
       })
       .catch(function (err) {
-        console.warn('Stock count unavailable:', err);
+        console.warn('Stock count unavailable (' + cat + '):', err);
       });
+  }
+
+  function loadAllStock() {
+    CAT_IDS.forEach(loadStock);
   }
 
   // ===== REAL PULL FROM FIRESTORE =====
@@ -641,12 +821,12 @@
     return arr;
   }
 
-  // kind: 'graded' or 'raw'. tier: only used for graded.
-  // Graded cards come from "inventory", raw cards from "rawInventory".
+  // cat: 'pokemon' or 'football'. kind: 'graded' or 'raw'. tier: only used for graded.
+  // Each category has its own graded + raw inventory collections (see CATS).
   // Graded pulls only consider cards whose market value is inside the tier's range.
-  function pullCard(uid, kind, tier) {
+  function pullCard(uid, cat, kind, tier) {
     kind = kind || 'graded';
-    var collName = kind === 'raw' ? 'rawInventory' : 'inventory';
+    var collName = kind === 'raw' ? CATS[cat].rawColl : CATS[cat].gradedColl;
     return db.collection(collName)
       .where('status', '==', 'available')
       .get()
@@ -658,14 +838,13 @@
         });
         if (!ids.length) throw new Error('SOLD_OUT');
         shuffle(ids);
-        return tryClaim(ids, 0, uid, collName, kind, tier);
+        return tryClaim(ids, 0, uid, collName, kind, tier, cat);
       });
   }
 
   // Claims one card inside a transaction. If someone else got it first,
   // it moves on to the next card in the shuffled list.
-  function tryClaim(ids, i, uid, collName, kind, tier) {
-    collName = collName || 'inventory';
+  function tryClaim(ids, i, uid, collName, kind, tier, cat) {
     if (i >= ids.length) return Promise.reject(new Error('SOLD_OUT'));
 
     var invRef = db.collection(collName).doc(ids[i]);
@@ -684,6 +863,7 @@
 
         var owned = {
           inventoryId: ids[i],
+          category: cat,
           name: c.name || 'Graded Card',
           grader: c.grader || '',
           grade: Number(c.grade) || 0,
@@ -704,6 +884,7 @@
 
         // Public feed entry (card details only, no user info)
         tx.set(db.collection('pulls').doc(), {
+          category: cat,
           name: owned.name,
           grader: owned.grader,
           grade: owned.grade,
@@ -716,20 +897,22 @@
       });
     }).then(function (result) {
       if (result) return result;
-      return tryClaim(ids, i + 1, uid, collName, kind, tier);
+      return tryClaim(ids, i + 1, uid, collName, kind, tier, cat);
     });
   }
 
   // Shows the chosen option in the payment popup
-  function setPaymentSummary(kind) {
+  function setPaymentSummary(cat, kind) {
+    selectedCat = cat;
     selectedKind = kind;
+    var C = CATS[cat];
     var label, price;
     if (kind === 'raw') {
-      label = RAW_PACK.label;
-      price = RAW_PACK.price;
+      label = C.label + ' ' + C.rawPack.label;
+      price = C.rawPack.price;
     } else {
-      label = selectedTier.name + ' Pack (Graded)';
-      price = selectedTier.price;
+      label = C.label + ' ' + selectedTier[cat].name + ' Pack (Graded)';
+      price = selectedTier[cat].price;
     }
     document.getElementById('payItemName').textContent = label;
     document.getElementById('payItemPrice').textContent = money2(price);
@@ -737,23 +920,24 @@
     document.getElementById('btnPayNow').textContent = 'Pay Now — ' + money(price);
   }
 
-  function startPurchase(kind) {
+  function startPurchase(cat, kind) {
     var user = currentUser || auth.currentUser;
     if (!user) {
       alert('Please sign in to buy a pack.');
       window.location.href = 'auth.html';
       return;
     }
-    setPaymentSummary(kind);
+    setPaymentSummary(cat, kind);
     openOverlay(payOverlay);
   }
 
-  document.getElementById('btnBuy').addEventListener('click', function () {
-    startPurchase('graded');
-  });
-
-  document.getElementById('btnBuyRaw').addEventListener('click', function () {
-    startPurchase('raw');
+  CAT_IDS.forEach(function (cat) {
+    el(cat, 'Buy').addEventListener('click', function () {
+      startPurchase(cat, 'graded');
+    });
+    el(cat, 'BuyRaw').addEventListener('click', function () {
+      startPurchase(cat, 'raw');
+    });
   });
 
   document.getElementById('payClose').addEventListener('click', function () {
@@ -774,8 +958,8 @@
     closeOverlay(payOverlay);
 
     var packEl = selectedKind === 'raw'
-      ? document.getElementById('foilPackRaw')
-      : document.querySelector('.carousel-slide.active .foil-pack');
+      ? el(selectedCat, 'FoilRaw')
+      : document.querySelector('#' + CATS[selectedCat].prefix + 'Carousel .carousel-slide.active .foil-pack');
     if (!packEl) {
       startReveal(user.uid);
       return;
@@ -798,7 +982,8 @@
   function startReveal(uid) {
     busy = true;
 
-    var pullPromise = pullCard(uid, selectedKind, selectedTier);
+    var cat = selectedCat;
+    var pullPromise = pullCard(uid, cat, selectedKind, selectedTier[cat]);
 
     openOverlay(videoOverlay);
     document.getElementById('videoStatus').textContent = 'Opening your pack...';
@@ -815,7 +1000,7 @@
       } else {
         alert('Could not open your pack: ' + (err && err.message ? err.message : err));
       }
-      loadStock();
+      loadStock(cat);
     });
 
     function finishVideo() {
@@ -824,7 +1009,7 @@
       pullPromise.then(function (card) {
         showCard(card);
         busy = false;
-        loadStock(); // refresh the in-stock counts
+        loadStock(cat); // refresh the in-stock counts
       });
     }
 
@@ -871,19 +1056,24 @@
   });
 
   // Start
-  buildCarousel();
-  renderTier();
-  requestAnimationFrame(function () { centerSlide(selectedTier.id, false); });
-  loadStock();
+  CAT_IDS.forEach(function (cat) {
+    buildCarousel(cat);
+    renderTier(cat);
+  });
+  requestAnimationFrame(function () { centerSlide('pokemon', selectedTier.pokemon.id, false); });
+  loadAllStock();
 })();
 </script>
 
-<!-- Recent pulls showcase: graded + raw -->
+<!-- Recent pulls showcase: graded + raw, per category -->
 <script>
 (function () {
-  var gradedTrack = document.getElementById('pullsTrack');
-  var rawTrack = document.getElementById('rawPullsTrack');
   if (!window.Kollect || !window.Kollect.db) return;
+
+  var tracks = {
+    pokemon:  { graded: document.getElementById('pkPullsTrack'), raw: document.getElementById('pkRawPullsTrack') },
+    football: { graded: document.getElementById('fbPullsTrack'), raw: document.getElementById('fbRawPullsTrack') }
+  };
 
   function buildItem(p) {
     var item = document.createElement('div');
@@ -927,23 +1117,31 @@
 
   window.Kollect.db.collection('pulls')
     .orderBy('pulledAt', 'desc')
-    .limit(40)
+    .limit(100)
     .onSnapshot(function (snap) {
-      var graded = [];
-      var raw = [];
+      var lists = {
+        pokemon:  { graded: [], raw: [] },
+        football: { graded: [], raw: [] }
+      };
 
       snap.forEach(function (doc) {
         var p = doc.data();
-        if (Number(p.grade) > 0) graded.push(p);
-        else raw.push(p);
+        // Older pulls have no category, so they count as Pokemon
+        var cat = p.category === 'football' ? 'football' : 'pokemon';
+        if (Number(p.grade) > 0) lists[cat].graded.push(p);
+        else lists[cat].raw.push(p);
       });
 
-      render(gradedTrack, graded, 'No pulls yet. Be the first!');
-      render(rawTrack, raw, 'No raw pulls yet. Be the first!');
+      Object.keys(tracks).forEach(function (cat) {
+        render(tracks[cat].graded, lists[cat].graded, 'No pulls yet. Be the first!');
+        render(tracks[cat].raw, lists[cat].raw, 'No raw pulls yet. Be the first!');
+      });
     }, function (err) {
       console.warn('Recent pulls failed:', err);
-      if (gradedTrack) gradedTrack.innerHTML = '<p class="pulls-empty">Recent pulls unavailable.</p>';
-      if (rawTrack) rawTrack.innerHTML = '<p class="pulls-empty">Recent pulls unavailable.</p>';
+      Object.keys(tracks).forEach(function (cat) {
+        if (tracks[cat].graded) tracks[cat].graded.innerHTML = '<p class="pulls-empty">Recent pulls unavailable.</p>';
+        if (tracks[cat].raw) tracks[cat].raw.innerHTML = '<p class="pulls-empty">Recent pulls unavailable.</p>';
+      });
     });
 })();
 </script>
