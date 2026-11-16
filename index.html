@@ -180,7 +180,7 @@
     <!-- RECENTLY PULLED CARDS -->
     <div class="hv-section">
       <h2>Recently pulled</h2>
-      <p>The latest cards pulled from all packs.</p>
+      <p>The latest cards pulled from all packs. <a href="pulls.html" style="color:#8b5cf6; font-weight:600;">View all pulls →</a></p>
       <div class="hv-box">
         <div class="pulls-wrap">
           <button class="carousel-btn prev" id="pullsPrev" aria-label="Previous">‹</button>
@@ -258,9 +258,9 @@
 (function () {
   var TOP_N = 10;
   var RECENT_N = 15;
-  // ⚠️ Set these to match the collection/field your Recent Pulls page uses
+  // Matches pulls.html
   var PULLS_COLLECTION = 'pulls';
-  var PULLS_TIME_FIELD = 'createdAt';
+  var PULLS_TIME_FIELD = 'pulledAt';
 
   if (!window.Kollect || !window.Kollect.db) return;
   var db = window.Kollect.db;
