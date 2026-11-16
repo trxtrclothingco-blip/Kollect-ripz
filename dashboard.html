@@ -46,6 +46,60 @@
     }
     @media (max-width: 380px) { .qa-grid .btn { font-size: 0.78rem; } }
 
+    /* Compact stat cards: 3 per row */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .stat-grid .stat-card {
+      box-sizing: border-box;
+      min-width: 0;
+      padding: 10px 6px;
+      text-align: center;
+    }
+    .stat-grid .stat-value {
+      font-size: 1.05rem;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+    .stat-grid .stat-label {
+      font-size: 0.68rem;
+      line-height: 1.25;
+      margin-top: 3px;
+    }
+    .stat-grid .btn-request-wd {
+      margin-top: 6px;
+      padding: 4px 6px;
+      font-size: 0.65rem;
+      max-width: 100%;
+    }
+
+    /* + shortcut on stat cards */
+    .stat-grid .stat-card { position: relative; }
+    .stat-plus {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #8b5cf6;
+      border-radius: 50%;
+      background: rgba(139,92,246,.18);
+      color: #fff;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      line-height: 1;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .stat-plus:hover { background: #8b5cf6; }
+
     /* Account dropdown */
     .acct-dropdown summary {
       list-style: none;
@@ -247,6 +301,7 @@
 
     <div class="stat-grid">
       <div class="stat-card">
+        <a href="collection.html" class="stat-plus" aria-label="Go to my collection">+</a>
         <div class="stat-value" id="statOwned">0</div>
         <div class="stat-label">Cards Owned</div>
       </div>
@@ -259,11 +314,13 @@
         <div class="stat-label">Packs Opened</div>
       </div>
       <div class="stat-card">
+        <button type="button" class="stat-plus" id="btnOpenConsigned" aria-label="View consigned cards">+</button>
         <div class="stat-value" id="statConsigned">0</div>
         <div class="stat-label">Consigned</div>
       </div>
       <!-- Withdrawn box -->
       <div class="stat-card">
+        <button type="button" class="stat-plus" id="btnOpenWithdrawnCards" aria-label="View withdrawn cards">+</button>
         <div class="stat-value" id="statWithdrawn">0</div>
         <div class="stat-label">Withdrawn</div>
       </div>
@@ -350,12 +407,6 @@
           </div>
         </details>
       </div>
-    </div>
-
-    <!-- Withdrawn cards (opens pop up) -->
-    <div class="card mt-3">
-      <h3 style="margin-bottom:12px">Withdrawn Cards</h3>
-      <button type="button" class="btn btn-secondary wd-open-btn" id="btnOpenWdCards">View withdrawn cards (0)</button>
     </div>
 
     <div class="card mt-3">
@@ -446,7 +497,9 @@
   var auth = window.Kollect.auth;
   var unsubscribe = null;
   var currentCashBalance = 0; // used by withdrawal request
-  var withdrawnCount = 0;
+  var withdrawnList = [];
+  var consignedList = [];
+  var currentMode = 'withdrawn';
 
   function money(n) {
     return '£' + Number(n || 0).toFixed(2);
@@ -474,8 +527,9 @@
   }
 
   function formatWhen(c) {
-    if (c.withdrawnAt && c.withdrawnAt.toDate) {
-      return c.withdrawnAt.toDate().toLocaleDateString('en-GB', {
+    var ts = c.withdrawnAt || c.consignedAt;
+    if (ts && ts.toDate) {
+      return ts.toDate().toLocaleDateString('en-GB', {
         day: 'numeric', month: 'short', year: 'numeric'
       });
     }
@@ -511,10 +565,10 @@
   track.addEventListener('scroll', updateNav);
   window.addEventListener('resize', updateNav);
 
-  function renderWithdrawn(list) {
+  function renderCarousel(list, emptyText) {
     if (!list.length) {
       carousel.classList.remove('has-cards');
-      track.innerHTML = '<p class="wd-empty" style="flex:0 0 100%">No withdrawn cards yet.</p>';
+      track.innerHTML = '<p class="wd-empty" style="flex:0 0 100%">' + emptyText + '</p>';
       wdCounter.textContent = '';
       return;
     }
@@ -534,7 +588,7 @@
       if (c.serial) rows.push(['Serial', escapeHtml(c.serial)]);
       rows.push(['Market value', money(c.market)]);
       rows.push(['Locked buyback', money(c.buyback)]);
-      if (when) rows.push(['Withdrawn', escapeHtml(when)]);
+      if (when) rows.push([currentMode === 'consigned' ? 'Consigned' : 'Withdrawn', escapeHtml(when)]);
 
       return '<div class="wd-slide">' +
         '<img src="' + escapeHtml(c.imageUrl) + '" alt="' + escapeHtml(c.name) + '" loading="lazy" />' +
@@ -550,7 +604,18 @@
     setTimeout(updateNav, 0);
   }
 
-  function openWdCards() {
+  function refreshCarousel() {
+    var isConsigned = currentMode === 'consigned';
+    renderCarousel(
+      isConsigned ? consignedList : withdrawnList,
+      isConsigned ? 'No consigned cards yet.' : 'No withdrawn cards yet.'
+    );
+  }
+
+  function openWdCards(mode) {
+    currentMode = mode === 'consigned' ? 'consigned' : 'withdrawn';
+    setText('wdModalTitle', currentMode === 'consigned' ? 'Consigned Cards' : 'Withdrawn Cards');
+    refreshCarousel();
     wdCardOverlay.classList.add('open');
     track.style.scrollBehavior = 'auto';
     track.scrollLeft = 0;
@@ -562,7 +627,8 @@
     wdCardOverlay.classList.remove('open');
   }
 
-  document.getElementById('btnOpenWdCards').addEventListener('click', openWdCards);
+  document.getElementById('btnOpenWithdrawnCards').addEventListener('click', function () { openWdCards('withdrawn'); });
+  document.getElementById('btnOpenConsigned').addEventListener('click', function () { openWdCards('consigned'); });
   document.getElementById('wdCardClose').addEventListener('click', closeWdCards);
   wdCardOverlay.addEventListener('click', function (e) {
     if (e.target === wdCardOverlay) closeWdCards();
@@ -574,11 +640,6 @@
     if (e.key === 'ArrowRight') scrollTrack(1);
   });
 
-  function setWithdrawnButton(n) {
-    withdrawnCount = n;
-    setText('btnOpenWdCards', 'View withdrawn cards (' + n + ')');
-  }
-
   function resetStats() {
     currentCashBalance = 0;
     setText('statOwned', '0');
@@ -589,10 +650,9 @@
     setText('statCashBalance', money(0));
     setText('acctPulledValue', money(0));
     setText('acctCashValue', money(0));
-    setWithdrawnButton(0);
-    carousel.classList.remove('has-cards');
-    track.innerHTML = '<p class="wd-empty" style="flex:0 0 100%">Sign in to see your withdrawn cards.</p>';
-    wdCounter.textContent = '';
+    withdrawnList = [];
+    consignedList = [];
+    refreshCarousel();
     closeWdCards();
   }
 
@@ -607,6 +667,7 @@
     var totalPulledValue = 0;
     var totalCash = 0;
     var withdrawnCards = [];
+    var consignedCards = [];
 
     cards.forEach(function (c) {
       var status = c.status || 'owned';
@@ -617,6 +678,7 @@
         totalCash += Number(c.buyback || 0);
       } else if (status === 'consigned') {
         consigned += 1;
+        consignedCards.push(c);
       } else if (status === 'withdrawn') {
         withdrawn += 1;
         withdrawnCards.push(c);
@@ -636,9 +698,9 @@
     setText('statCashBalance', money(totalCash));
     setText('acctPulledValue', money(totalPulledValue));
     setText('acctCashValue', money(totalCash));
-    setWithdrawnButton(withdrawn);
-
-    renderWithdrawn(withdrawnCards);
+    withdrawnList = withdrawnCards;
+    consignedList = consignedCards;
+    refreshCarousel();
   }
 
   // ===== CONTACT / DELIVERY DETAILS =====
@@ -863,4 +925,3 @@
 </script>
 </body>
 </html>
-
