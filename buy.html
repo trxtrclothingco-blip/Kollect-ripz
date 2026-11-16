@@ -244,6 +244,25 @@
       text-align: center;
     }
 
+    /* ===== MONTHLY LEADERBOARD ===== */
+    .lb-card { margin-top: 28px; background: #1a1d27; border: 1px solid #2a2f3d; border-radius: 16px; padding: 18px; }
+    .lb-card h2 { font-size: 1.25rem; margin-bottom: 4px; }
+    .lb-timer { text-align: center; margin: 12px 0; padding: 10px; border-radius: 12px; background: #0f1117; border: 1px solid #2a2f3d; color: #9ca3af; font-size: .85rem; }
+    .lb-timer b { display: block; font-size: 1.35rem; color: #f0f2f5; font-variant-numeric: tabular-nums; }
+    .lb-prizes { display: flex; gap: 8px; margin-bottom: 14px; }
+    .lb-prize { flex: 1; text-align: center; padding: 10px 4px; border-radius: 12px; background: #0f1117; border: 1px solid #2a2f3d; font-size: .78rem; color: #cbd5e1; }
+    .lb-prize strong { display: block; font-size: .95rem; margin-top: 2px; }
+    .lb-prize.diamond { border-color: #38bdf8; box-shadow: 0 0 14px rgba(56,189,248,.35); }
+    .lb-prize.gold { border-color: #f59e0b; box-shadow: 0 0 14px rgba(245,158,11,.3); }
+    .lb-row { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-bottom: 1px solid #2a2f3d; border-radius: 8px; }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-row.me { background: rgba(139,92,246,.18); }
+    .lb-rk { width: 32px; text-align: center; font-weight: 800; }
+    .lb-nm { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lb-pk { font-weight: 800; }
+    .lb-me { color: #c4b5fd; font-weight: 600; font-size: .88rem; text-align: center; margin-top: 12px; }
+    .lb-empty { color: #6b7280; font-size: .9rem; margin: 0; }
+
     /* ===== GRADED TIERS ===== */
 
     /* Pack carousel (replaces the clickable tier tabs) */
@@ -510,6 +529,20 @@
         </div>
       </div>
     </div>
+
+    <!-- MONTHLY LEADERBOARD -->
+    <section class="lb-card">
+      <h2 id="lbTitle">Monthly Leaderboard</h2>
+      <p class="text-dim" style="font-size:.85rem;margin:0">Most packs opened this month wins. Prizes are added to My Free Packs on the Rewards page.</p>
+      <div class="lb-timer">Resets in<b id="lbTimer">--</b></div>
+      <div class="lb-prizes">
+        <div class="lb-prize diamond">🥇 1st<strong>Diamond pack</strong></div>
+        <div class="lb-prize gold">🥈 2nd<strong>Gold pack</strong></div>
+        <div class="lb-prize gold">🥉 3rd<strong>Gold pack</strong></div>
+      </div>
+      <div id="lbBoard"><p class="lb-empty">Loading leaderboard...</p></div>
+      <p class="lb-me" id="lbMe"></p>
+    </section>
   </div>
 
   <footer>
@@ -575,6 +608,7 @@
         <h2 id="resultName" style="margin-bottom:6px">Card Name</h2>
         <p class="text-muted" id="resultMeta">Locked buyback shown below</p>
         <p style="margin:12px 0;font-size:1.2rem;font-weight:700;color:#10b981" id="resultBuyback">£0.00</p>
+        <p style="margin:0 0 12px;color:#c4b5fd;font-weight:600">+5 Vault Points earned</p>
         <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap">
           <a href="collection.html" class="btn btn-primary">View My Collection</a>
           <button class="btn btn-secondary" id="btnCloseResult">Close</button>
@@ -601,6 +635,20 @@
 
   var currentUser = null;
   var busy = false;
+
+  // Vault Points given for every pack opened (rewards.html shows these)
+  var PACK_POINTS = 5;
+
+  // Leaderboard month key, e.g. "2026-11" (UTC so everyone resets at the same moment)
+  function monthKey(d) {
+    d = d || new Date();
+    return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2);
+  }
+  function displayName(u) {
+    var au = currentUser || auth.currentUser || {};
+    return u.username || u.name || u.displayName || au.displayName ||
+      (au.email ? au.email.split('@')[0] : '') || 'Collector';
+  }
 
   // =====================================================================
   // FREE PACK (voucher) FROM rewards.html
@@ -720,6 +768,8 @@
 
   auth.onAuthStateChanged(function (user) {
     currentUser = user;
+    watchMine();
+    renderBoard();
   });
 
   function openOverlay(e) {
@@ -914,9 +964,12 @@
 
     var invRef = db.collection(collName).doc(ids[i]);
     var ownRef = db.collection('users').doc(uid).collection('collection').doc(ids[i]);
+    var userRef = db.collection('users').doc(uid);
+    var entryRef = db.collection('leaderboards').doc(monthKey()).collection('entries').doc(uid);
 
     return db.runTransaction(function (tx) {
-      return tx.get(invRef).then(function (snap) {
+      return Promise.all([tx.get(invRef), tx.get(userRef), tx.get(entryRef)]).then(function (res) {
+        var snap = res[0], uSnap = res[1], eSnap = res[2];
         if (!snap.exists || snap.data().status !== 'available') return null;
 
         var c = snap.data();
@@ -946,6 +999,22 @@
           redeemedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         tx.set(ownRef, owned);
+
+        // +5 Vault Points for opening a pack (pointsEarned drives the points milestones)
+        var u = uSnap.exists ? uSnap.data() : {};
+        var earned = u.pointsEarned != null ? Number(u.pointsEarned) || 0 : Number(u.points) || 0;
+        tx.set(userRef, {
+          points: firebase.firestore.FieldValue.increment(PACK_POINTS),
+          pointsEarned: earned + PACK_POINTS
+        }, { merge: true });
+
+        // Monthly leaderboard: packs opened this month
+        var e = eSnap.exists ? eSnap.data() : {};
+        tx.set(entryRef, {
+          name: displayName(u),
+          packs: (Number(e.packs) || 0) + 1,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
 
         // Public feed entry (card details only, no user info)
         tx.set(db.collection('pulls').doc(), {
@@ -1141,6 +1210,72 @@
   document.getElementById('btnCloseResult').addEventListener('click', function () {
     closeOverlay(resultOverlay);
   });
+
+  // ===== MONTHLY LEADERBOARD =====
+  var boardRows = [], boardMonth = null, boardUnsub = null, myUnsub = null, myPacks = 0;
+  function escH(t) { var d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML; }
+  function pad2(n) { return ('0' + n).slice(-2); }
+  function nextReset() { var n = new Date(); return Date.UTC(n.getUTCFullYear(), n.getUTCMonth() + 1, 1); }
+  function fmtLeft(ms) {
+    var s = Math.max(0, Math.floor(ms / 1000));
+    return Math.floor(s / 86400) + 'd ' + pad2(Math.floor(s % 86400 / 3600)) + ':' + pad2(Math.floor(s % 3600 / 60)) + ':' + pad2(s % 60);
+  }
+  function renderBoard() {
+    var title = document.getElementById('lbTitle');
+    if (!title) return;
+    title.textContent = new Date().toLocaleString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }) + ' Leaderboard';
+    var uid = (currentUser || auth.currentUser || {}).uid;
+    var box = document.getElementById('lbBoard');
+    if (!boardRows.length) {
+      box.innerHTML = '<p class="lb-empty">No packs opened yet this month. Be the first!</p>';
+    } else {
+      var medals = ['🥇', '🥈', '🥉'];
+      box.innerHTML = boardRows.map(function (r, i) {
+        return '<div class="lb-row' + (uid && r.id === uid ? ' me' : '') + '"><div class="lb-rk">' + (medals[i] || (i + 1)) + '</div>' +
+          '<div class="lb-nm">' + escH(r.name || 'Collector') + (uid && r.id === uid ? ' (you)' : '') + '</div>' +
+          '<div class="lb-pk">' + r.packs + '</div></div>';
+      }).join('');
+    }
+    document.getElementById('lbMe').textContent = uid ? 'Your packs opened this month: ' + myPacks : '';
+  }
+  function watchMine() {
+    if (myUnsub) { myUnsub(); myUnsub = null; }
+    myPacks = 0;
+    var u = currentUser || auth.currentUser;
+    if (!u) return;
+    myUnsub = db.collection('leaderboards').doc(monthKey()).collection('entries').doc(u.uid).onSnapshot(function (s) {
+      myPacks = s.exists ? (Number(s.data().packs) || 0) : 0;
+      renderBoard();
+    }, function () {});
+  }
+  function startBoard() {
+    var key = monthKey();
+    if (boardMonth === key) return;
+    boardMonth = key;
+    if (boardUnsub) boardUnsub();
+    watchMine();
+    boardUnsub = db.collection('leaderboards').doc(key).collection('entries')
+      .orderBy('packs', 'desc').limit(10)
+      .onSnapshot(function (snap) {
+        boardRows = [];
+        snap.forEach(function (d) {
+          var x = d.data();
+          boardRows.push({ id: d.id, name: x.name, packs: Number(x.packs) || 0, t: x.updatedAt && x.updatedAt.toMillis ? x.updatedAt.toMillis() : 0 });
+        });
+        // Ties: whoever reached the number first ranks higher
+        boardRows.sort(function (a, b) { return b.packs - a.packs || a.t - b.t; });
+        renderBoard();
+      }, function (err) {
+        console.warn('Leaderboard failed:', err);
+        document.getElementById('lbBoard').innerHTML = '<p class="lb-empty">Leaderboard unavailable.</p>';
+      });
+  }
+  setInterval(function () {
+    var t = document.getElementById('lbTimer');
+    if (t) t.textContent = fmtLeft(nextReset() - Date.now());
+    if (monthKey() !== boardMonth) startBoard();   // new month: start a fresh board
+  }, 1000);
+  startBoard();
 
   // Start
   CAT_IDS.forEach(function (cat) {
