@@ -8,7 +8,27 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
   <style>
-    /* Withdrawn cards list (new) */
+    /* Rewards banner (new) */
+    .rewards-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      padding: 18px 20px;
+      border-radius: 16px;
+      border: 1px solid #8b5cf6;
+      background: linear-gradient(135deg, rgba(139,92,246,.22), rgba(34,211,238,.10));
+      box-shadow: 0 0 24px rgba(139,92,246,.25);
+    }
+    .rewards-banner-text { flex: 1 1 220px; min-width: 0; }
+    .rewards-banner-text strong { display: block; font-size: 1.05rem; margin-bottom: 4px; }
+    .rewards-banner-text span { font-size: 0.88rem; color: #cbd5e1; }
+    .rewards-banner .btn { flex: 0 0 auto; }
+    @media (max-width: 520px) { .rewards-banner .btn { width: 100%; text-align: center; } }
+
+    /* Withdrawn cards list */
     .wd-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -42,7 +62,7 @@
     .wd-meta { font-size: 0.75rem; color: #6b7280; margin-top: 3px; }
     .wd-empty { color: #6b7280; font-size: 0.9rem; }
 
-    /* Request withdrawal button + modals (new) */
+    /* Request withdrawal button + modals */
     .btn-request-wd {
       display: inline-block;
       margin-top: 10px;
@@ -112,7 +132,6 @@
         <li><a href="pulls.html">Recent Pulls</a></li>
         <li><a href="collection.html">My Collection</a></li>
         <li><a href="dashboard.html" class="active">Dashboard</a></li>
-        <li><a href="rewards.html" class="active">Rewards</a></li>
         <li><a href="admin.html">Admin</a></li>
         
       </ul>
@@ -122,6 +141,15 @@
   <div class="container page-content">
     <h1 class="page-title">Dashboard</h1>
     <p class="page-sub">Your vault overview and quick actions.</p>
+
+    <!-- Rewards banner (new) -->
+    <div class="rewards-banner">
+      <div class="rewards-banner-text">
+        <strong>🎁 My Rewards</strong>
+        <span>Go to My Rewards for your daily check-in and to view your progress.</span>
+      </div>
+      <a href="rewards.html" class="btn btn-primary">Go to My Rewards</a>
+    </div>
 
     <div class="stat-grid">
       <div class="stat-card">
@@ -140,12 +168,12 @@
         <div class="stat-value" id="statConsigned">0</div>
         <div class="stat-label">Consigned</div>
       </div>
-      <!-- Withdrawn box (new) -->
+      <!-- Withdrawn box -->
       <div class="stat-card">
         <div class="stat-value" id="statWithdrawn">0</div>
         <div class="stat-label">Withdrawn</div>
       </div>
-      <!-- Cashed out balance (new) -->
+      <!-- Cashed out balance -->
       <div class="stat-card">
         <div class="stat-value" id="statCashBalance" style="color:#10b981">£0.00</div>
         <div class="stat-label">Cashed Out Balance</div>
@@ -226,7 +254,7 @@
       </div>
     </div>
 
-    <!-- Withdrawn cards list (new) -->
+    <!-- Withdrawn cards list -->
     <div class="card mt-3">
       <h3 style="margin-bottom:12px">Withdrawn Cards</h3>
       <div class="wd-grid" id="withdrawnGrid">
@@ -248,7 +276,7 @@
     <div class="container">Kollect Vault &copy; 2026</div>
   </footer>
 
-  <!-- Withdrawal request pop up (new) -->
+  <!-- Withdrawal request pop up -->
   <div class="wdr-overlay" id="wdrOverlay">
     <div class="wdr-modal" role="dialog" aria-modal="true" aria-labelledby="wdrTitle">
       <h3 id="wdrTitle">Request withdrawal</h3>
@@ -281,7 +309,7 @@
     </div>
   </div>
 
-  <!-- Request received pop up (new) -->
+  <!-- Request received pop up -->
   <div class="wdr-overlay" id="wdrDoneOverlay">
     <div class="wdr-modal wdr-success" role="dialog" aria-modal="true" aria-labelledby="wdrDoneTitle">
       <div class="wdr-tick">✓</div>
@@ -305,7 +333,7 @@
   var db = window.Kollect.db;
   var auth = window.Kollect.auth;
   var unsubscribe = null;
-  var currentCashBalance = 0; // (new) used by withdrawal request
+  var currentCashBalance = 0; // used by withdrawal request
 
   function money(n) {
     return '£' + Number(n || 0).toFixed(2);
@@ -324,7 +352,7 @@
       .replace(/"/g, '&quot;');
   }
 
-  // Withdrawn cards list (new)
+  // Withdrawn cards list
   function renderWithdrawn(list) {
     var grid = document.getElementById('withdrawnGrid');
 
@@ -489,7 +517,7 @@
       });
   });
 
-  // ===== REQUEST WITHDRAWAL (new) =====
+  // ===== REQUEST WITHDRAWAL =====
   var wdrOverlay = document.getElementById('wdrOverlay');
   var wdrDoneOverlay = document.getElementById('wdrDoneOverlay');
   var formWithdraw = document.getElementById('formWithdraw');
@@ -643,4 +671,3 @@
 </script>
 </body>
 </html>
-
