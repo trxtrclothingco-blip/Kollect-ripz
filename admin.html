@@ -162,8 +162,10 @@
           <div class="form-group">
             <label>Card Type *</label>
             <select class="form-control" id="cardType" required>
-              <option value="graded">Graded Card</option>
-              <option value="raw">Raw Card</option>
+              <option value="pokemon-graded">Pokemon — Graded Card</option>
+              <option value="pokemon-raw">Pokemon — Raw Card</option>
+              <option value="football-graded">Football — Graded Card</option>
+              <option value="football-raw">Football — Raw Card</option>
             </select>
           </div>
 
@@ -215,7 +217,7 @@
       </div>
 
       <div>
-        <h2 style="font-size:1.15rem;margin-bottom:12px">Inventory</h2>
+        <h2 style="font-size:1.15rem;margin-bottom:12px">Pokemon Inventory</h2>
 
         <div class="inv-table-wrap">
           <table class="inv-table">
@@ -238,7 +240,7 @@
           </table>
         </div>
 
-        <h2 style="font-size:1.15rem;margin:24px 0 12px">Raw Inventory</h2>
+        <h2 style="font-size:1.15rem;margin:24px 0 12px">Pokemon Raw Inventory</h2>
 
         <div class="inv-table-wrap">
           <table class="inv-table">
@@ -259,7 +261,51 @@
           </table>
         </div>
 
-        <!-- Redeemed cards to ship (new) -->
+        <h2 style="font-size:1.15rem;margin:24px 0 12px">Football Inventory</h2>
+
+        <div class="inv-table-wrap">
+          <table class="inv-table">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Card</th>
+                <th>Grade</th>
+                <th>Serial</th>
+                <th>Market</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+
+            <tbody id="footballInventoryBody">
+              <tr>
+                <td colspan="6" class="text-center text-dim" style="padding:32px">No cards yet</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 style="font-size:1.15rem;margin:24px 0 12px">Football Raw Inventory</h2>
+
+        <div class="inv-table-wrap">
+          <table class="inv-table">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Card</th>
+                <th>Market</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+
+            <tbody id="footballRawInventoryBody">
+              <tr>
+                <td colspan="4" class="text-center text-dim" style="padding:32px">No raw cards yet</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Redeemed cards to ship -->
         <div class="redeemed-box">
           <h2 style="font-size:1.15rem;margin-bottom:12px">Redeemed Cards — To Ship</h2>
           <p class="redeemed-hint">Tap a row to see the customer's details.</p>
@@ -292,7 +338,7 @@
     <div class="container">Kollect Vault Admin &copy; 2026</div>
   </footer>
 
-  <!-- Customer details modal (new) -->
+  <!-- Customer details modal -->
   <div class="modal-backdrop" id="custModal">
     <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="custTitle">
       <div class="modal-head">
@@ -323,11 +369,30 @@
 
     var selectedFile = null;
 
+    // =====================================================================
+    // CARD TYPES -> FIRESTORE COLLECTIONS
+    // type = value of the Card Type dropdown
+    // category is saved on each card so you can tell Pokemon from Football
+    // =====================================================================
+    var COLS = [
+      { col: 'inventory',            type: 'pokemon-graded',  category: 'pokemon',  label: 'Pokemon',  raw: false, body: 'inventoryBody' },
+      { col: 'rawInventory',         type: 'pokemon-raw',     category: 'pokemon',  label: 'Pokemon',  raw: true,  body: 'rawInventoryBody' },
+      { col: 'footballInventory',    type: 'football-graded', category: 'football', label: 'Football', raw: false, body: 'footballInventoryBody' },
+      { col: 'footballRawInventory', type: 'football-raw',    category: 'football', label: 'Football', raw: true,  body: 'footballRawInventoryBody' }
+    ];
+
+    function colByType(t) {
+      return COLS.filter(function (c) { return c.type === t; })[0];
+    }
+    function colByName(n) {
+      return COLS.filter(function (c) { return c.col === n; })[0];
+    }
+
     // Raw / graded switch
     var cardTypeEl = document.getElementById('cardType');
 
     function applyCardType() {
-      var isRaw = cardTypeEl.value === 'raw';
+      var isRaw = colByType(cardTypeEl.value).raw;
 
       ['cardGrader', 'cardGrade', 'cardSerial'].forEach(function (id) {
         var el = document.getElementById(id);
@@ -418,11 +483,13 @@
       btn.disabled = true;
       btn.textContent = 'Uploading…';
 
+      var target = colByType(cardTypeEl.value);
+
       uploadToCloudinary(selectedFile)
 
         .then(function (imageUrl) {
 
-          var isRaw = document.getElementById('cardType').value === 'raw';
+          var isRaw = target.raw;
 
           var cardData = {
             name: document.getElementById('cardName').value.trim(),
@@ -431,13 +498,14 @@
             serial: isRaw ? '' : document.getElementById('cardSerial').value.trim(),
             market: Number(document.getElementById('cardMarket').value),
             imageUrl: imageUrl,
+            category: target.category,
             status: 'available',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           };
 
           if (isRaw) cardData.type = 'raw';
 
-          return db.collection(isRaw ? 'rawInventory' : 'inventory').add(cardData);
+          return db.collection(target.col).add(cardData);
         })
 
         .then(function () {
@@ -458,15 +526,38 @@
         });
     });
 
-    // Redeemed cards from both collections, keyed by "collection/id"
-    var redeemedMap = { inventory: {}, rawInventory: {} };
+    // Redeemed cards from all four collections, per collection by doc id
+    var redeemedMap = {};
+    var stats = {};
+    COLS.forEach(function (c) {
+      redeemedMap[c.col] = {};
+      stats[c.col] = { total: 0, available: 0, redeemed: 0 };
+    });
+
+    function renderStats() {
+      var t = 0, a = 0, r = 0;
+      COLS.forEach(function (c) {
+        t += stats[c.col].total;
+        a += stats[c.col].available;
+        r += stats[c.col].redeemed;
+      });
+      document.getElementById('statTotal').textContent = t;
+      document.getElementById('statAvailable').textContent = a;
+      document.getElementById('statRedeemed').textContent = r;
+    }
+
+    function typeLabelFor(info, c) {
+      return info.raw
+        ? info.label + ' Raw'
+        : info.label + ' ' + escapeHtml(c.grader) + ' ' + escapeHtml(c.grade);
+    }
 
     function renderRedeemed() {
       var rows = [];
 
-      ['inventory', 'rawInventory'].forEach(function (col) {
-        Object.keys(redeemedMap[col]).forEach(function (id) {
-          rows.push({ col: col, id: id, data: redeemedMap[col][id] });
+      COLS.forEach(function (info) {
+        Object.keys(redeemedMap[info.col]).forEach(function (id) {
+          rows.push({ col: info.col, id: id, data: redeemedMap[info.col][id] });
         });
       });
 
@@ -487,14 +578,13 @@
 
       tbody.innerHTML = rows.map(function (r) {
         var c = r.data;
-        var isRaw = r.col === 'rawInventory';
-        var typeLabel = isRaw ? 'Raw' : escapeHtml(c.grader) + ' ' + escapeHtml(c.grade);
+        var info = colByName(r.col);
         var who = c.redeemedBy || c.userId || c.uid || c.ownerId || '';
 
         return '<tr class="clickable" data-col="' + r.col + '" data-id="' + escapeHtml(r.id) + '">' +
           '<td><img src="' + escapeHtml(c.imageUrl || '') + '" alt="" /></td>' +
           '<td><strong>' + escapeHtml(c.name) + '</strong></td>' +
-          '<td>' + typeLabel + '</td>' +
+          '<td>' + typeLabelFor(info, c) + '</td>' +
           '<td class="text-dim">' + (who ? escapeHtml(String(who).slice(0, 8)) + '…' : 'Unknown') + '</td>' +
           '</tr>';
       }).join('');
@@ -530,6 +620,7 @@
     }
 
     function openCustomer(col, id, card) {
+      var info = colByName(col);
       var uid = card.redeemedBy || card.userId || card.uid || card.ownerId || '';
       var body = document.getElementById('custBody');
       var modal = document.getElementById('custModal');
@@ -543,7 +634,7 @@
         '<img src="' + escapeHtml(card.imageUrl || '') + '" alt="" />' +
         '<div><strong>' + escapeHtml(card.name) + '</strong><br />' +
         '<span class="text-dim">' +
-        (col === 'rawInventory' ? 'Raw card' : escapeHtml(card.grader) + ' ' + escapeHtml(card.grade) +
+        (info.raw ? info.label + ' raw card' : info.label + ' · ' + escapeHtml(card.grader) + ' ' + escapeHtml(card.grade) +
           (card.serial ? ' · ' + escapeHtml(card.serial) : '')) +
         '</span><br /><span class="text-dim">Doc ID: ' + escapeHtml(id) + '</span></div>' +
         '</div></div>';
@@ -622,134 +713,71 @@
       if (e.key === 'Escape') closeCustomer();
     });
 
-    db.collection('inventory')
-      .orderBy('createdAt', 'desc')
-      .onSnapshot(function (snap) {
+    // Live lists for all four collections
+    COLS.forEach(function (info) {
+      db.collection(info.col)
+        .orderBy('createdAt', 'desc')
+        .onSnapshot(function (snap) {
 
-        var cards = [];
-        redeemedMap.inventory = {};
+          var cards = [];
+          redeemedMap[info.col] = {};
 
-        snap.forEach(function (doc) {
-          var d = doc.data();
-          cards.push(d);
-          if (d.status === 'redeemed') redeemedMap.inventory[doc.id] = d;
+          snap.forEach(function (doc) {
+            var d = doc.data();
+            cards.push(d);
+            if (d.status === 'redeemed') redeemedMap[info.col][doc.id] = d;
+          });
+
+          stats[info.col] = {
+            total: cards.length,
+            available: cards.filter(function (c) { return c.status === 'available'; }).length,
+            redeemed: cards.filter(function (c) { return c.status === 'redeemed'; }).length
+          };
+
+          renderStats();
+          renderRedeemed();
+
+          var tbody = document.getElementById(info.body);
+          var cols = info.raw ? 4 : 6;
+
+          if (!cards.length) {
+            tbody.innerHTML =
+              '<tr><td colspan="' + cols + '" class="text-center text-dim" style="padding:32px">' +
+              (info.raw ? 'No raw cards yet' : 'No cards yet') + '</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = cards.map(function (c) {
+
+            var sc = c.status === 'available' ? 'badge-available' : 'badge-redeemed';
+            var sl = c.status === 'available' ? 'Available' : 'Redeemed';
+
+            if (info.raw) {
+              return '<tr>' +
+                '<td><img src="' + (c.imageUrl || '') + '" alt="" /></td>' +
+                '<td><strong>' + escapeHtml(c.name) + '</strong></td>' +
+                '<td>£' + Number(c.market || 0).toFixed(2) + '</td>' +
+                '<td><span class="badge ' + sc + '">' + sl + '</span></td>' +
+                '</tr>';
+            }
+
+            return '<tr>' +
+              '<td><img src="' + (c.imageUrl || '') + '" alt="" /></td>' +
+              '<td><strong>' + escapeHtml(c.name) + '</strong></td>' +
+              '<td><span class="badge ' +
+              (c.grade === 10 ? 'badge-10' : 'badge-9') +
+              '">' + escapeHtml(c.grader) + ' ' + c.grade + '</span></td>' +
+              '<td class="text-dim">' + escapeHtml(c.serial) + '</td>' +
+              '<td>£' + Number(c.market || 0).toFixed(2) + '</td>' +
+              '<td><span class="badge ' + sc + '">' + sl + '</span></td>' +
+              '</tr>';
+
+          }).join('');
+
+        }, function (err) {
+          console.error(info.col, err);
         });
-
-        renderRedeemed();
-
-        document.getElementById('statTotal').textContent = cards.length;
-
-        document.getElementById('statAvailable').textContent =
-          cards.filter(function (c) {
-            return c.status === 'available';
-          }).length;
-
-        document.getElementById('statRedeemed').textContent =
-          cards.filter(function (c) {
-            return c.status === 'redeemed';
-          }).length;
-
-        var tbody = document.getElementById('inventoryBody');
-
-        if (!cards.length) {
-
-          tbody.innerHTML =
-            '<tr><td colspan="6" class="text-center text-dim" style="padding:32px">No cards yet</td></tr>';
-
-          return;
-        }
-
-        tbody.innerHTML = cards.map(function (c) {
-
-          var sc = c.status === 'available'
-            ? 'badge-available'
-            : 'badge-redeemed';
-
-          var sl = c.status === 'available'
-            ? 'Available'
-            : 'Redeemed';
-
-          return '<tr>' +
-
-            '<td><img src="' + (c.imageUrl || '') + '" alt="" /></td>' +
-
-            '<td><strong>' + escapeHtml(c.name) + '</strong></td>' +
-
-            '<td><span class="badge ' +
-            (c.grade === 10 ? 'badge-10' : 'badge-9') +
-            '">' + escapeHtml(c.grader) + ' ' + c.grade + '</span></td>' +
-
-            '<td class="text-dim">' + escapeHtml(c.serial) + '</td>' +
-
-            '<td>£' + Number(c.market || 0).toFixed(2) + '</td>' +
-
-            '<td><span class="badge ' + sc + '">' + sl + '</span></td>' +
-
-            '</tr>';
-
-        }).join('');
-
-      }, function (err) {
-
-        console.error(err);
-
-      });
-
-    // Raw inventory list
-    db.collection('rawInventory')
-      .orderBy('createdAt', 'desc')
-      .onSnapshot(function (snap) {
-
-        var rawCards = [];
-        redeemedMap.rawInventory = {};
-
-        snap.forEach(function (doc) {
-          var d = doc.data();
-          rawCards.push(d);
-          if (d.status === 'redeemed') redeemedMap.rawInventory[doc.id] = d;
-        });
-
-        renderRedeemed();
-
-        var rawBody = document.getElementById('rawInventoryBody');
-
-        if (!rawCards.length) {
-
-          rawBody.innerHTML =
-            '<tr><td colspan="4" class="text-center text-dim" style="padding:32px">No raw cards yet</td></tr>';
-
-          return;
-        }
-
-        rawBody.innerHTML = rawCards.map(function (c) {
-
-          var sc = c.status === 'available'
-            ? 'badge-available'
-            : 'badge-redeemed';
-
-          var sl = c.status === 'available'
-            ? 'Available'
-            : 'Redeemed';
-
-          return '<tr>' +
-
-            '<td><img src="' + (c.imageUrl || '') + '" alt="" /></td>' +
-
-            '<td><strong>' + escapeHtml(c.name) + '</strong></td>' +
-
-            '<td>£' + Number(c.market || 0).toFixed(2) + '</td>' +
-
-            '<td><span class="badge ' + sc + '">' + sl + '</span></td>' +
-
-            '</tr>';
-
-        }).join('');
-
-      }, function (err) {
-
-        console.error(err);
-
-      });
+    });
   </script>
 
 </body>
