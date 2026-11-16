@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Rewards — Kollect Vault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .rw-sec { margin: 30px 0; }
+    .rw-sec h2 { font-size: 1.25rem; margin-bottom: 4px; }
+    .rw-sub { color: #6b7280; font-size: .9rem; margin-bottom: 14px; }
+    .rw-box { background: #1a1d27; border: 1px solid #2a2f3d; border-radius: 16px; padding: 18px; }
+
+    .rw-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    @media (min-width: 700px) { .rw-stats { grid-template-columns: repeat(4, 1fr); } }
+    .rw-stat { background: #1a1d27; border: 1px solid #2a2f3d; border-radius: 12px; padding: 14px; text-align: center; }
+    .rw-stat small { display: block; font-size: .7rem; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+    .rw-stat strong { font-size: 1.35rem; font-weight: 800; }
+
+    /* Daily check-in */
+    .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    .day { background: #0f1117; border: 1px solid #2a2f3d; border-radius: 10px; padding: 10px 2px; text-align: center; font-size: .72rem; color: #9ca3af; }
+    .day b { display: block; font-size: .95rem; color: #f0f2f5; margin: 3px 0; }
+    .day.done { border-color: #10b981; color: #10b981; }
+    .day.today { border-color: #8b5cf6; box-shadow: 0 0 14px rgba(139,92,246,.5); color: #c4b5fd; }
+    .day.big { background: linear-gradient(160deg, #3b2a0a, #0f1117); }
+
+    /* Milestone line */
+    .line { position: relative; height: 48px; margin: 6px 14px 14px; }
+    .line-bar { position: absolute; left: 0; right: 0; top: 14px; height: 6px; background: #2a2f3d; border-radius: 3px; }
+    .line-fill { height: 100%; width: 0; background: linear-gradient(90deg, #8b5cf6, #22d3ee); border-radius: 3px; transition: width .7s; }
+    .node { position: absolute; top: 6px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: #0f1117; border: 2px solid #2a2f3d; cursor: pointer; }
+    .node.on { background: #8b5cf6; border-color: #c4b5fd; }
+    .node em { position: absolute; top: 26px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: .68rem; color: #9ca3af; }
+
+    /* Stage carousel */
+    .car { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 16px 12%; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .car::-webkit-scrollbar { display: none; }
+    .st { flex: 0 0 68%; max-width: 270px; scroll-snap-align: center; border-radius: 16px; background: #1a1d27; border: 1px solid #2a2f3d; overflow: hidden; }
+    .st.cur { border-color: var(--c); box-shadow: 0 0 28px var(--c); }
+    .st-top { padding: 18px 10px 12px; text-align: center; background: linear-gradient(160deg, var(--c), #0f1117 85%); }
+    .st-top h3 { margin: 6px 0 2px; font-size: 1.15rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; }
+    .st-top p { font-size: .8rem; color: #e5e7eb; }
+    .st.locked .st-top { filter: grayscale(.85); }
+    .st-rw { position: relative; padding: 16px 10px; min-height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+    .rw-packs { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .lock { position: absolute; inset: 0; background: rgba(10,12,18,.55); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: .78rem; font-weight: 700; transition: opacity .4s; }
+    .st:not(.locked) .lock { opacity: 0; pointer-events: none; }
+    .st.claimed .rw-packs { opacity: .35; }
+    .done-tag { color: #10b981; font-weight: 800; }
+
+    .mp { width: 46px; height: 66px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; color: #fff; margin: 0 auto 4px;
+      background: linear-gradient(160deg, var(--a), var(--b)); border-top: 6px solid rgba(255,255,255,.35); border-bottom: 6px solid rgba(255,255,255,.35);
+      box-shadow: 0 6px 14px rgba(0,0,0,.5), 0 0 14px var(--a); }
+    .mpw { text-align: center; font-size: .7rem; color: #cbd5e1; }
+    .t-bronze { --a: #c2713a; --b: #6b3416; } .t-silver { --a: #cbd5e1; --b: #4b5563; } .t-gold { --a: #f59e0b; --b: #92400e; }
+    .t-platinum { --a: #8b5cf6; --b: #4c1d95; } .t-diamond { --a: #38bdf8; --b: #0c4a6e; } .t-emerald { --a: #10b981; --b: #064e3b; }
+
+    /* Quests, free packs, leaderboard */
+    .qrow { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #2a2f3d; }
+    .qrow:last-child { border-bottom: none; }
+    .qicon { font-size: 1.5rem; width: 40px; text-align: center; }
+    .qtxt { flex: 1; min-width: 0; font-weight: 600; font-size: .95rem; }
+    .qtxt small { display: block; color: #6b7280; font-weight: 400; }
+    .qrow .btn { flex: 0 0 auto; }
+    .free-row { display: flex; gap: 18px; flex-wrap: wrap; }
+    .lb { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-bottom: 1px solid #2a2f3d; border-radius: 8px; }
+    .lb:last-child { border-bottom: none; }
+    .lb.me { background: rgba(139,92,246,.18); }
+    .lb .rk { width: 32px; text-align: center; font-weight: 800; }
+    .lb .nm { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lb .pk { font-weight: 800; }
+    .lb:nth-child(1) .nm { color: #fbbf24; } .lb:nth-child(2) .nm { color: #e5e7eb; } .lb:nth-child(3) .nm { color: #e8a56b; }
+    #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1a1d27; border: 1px solid #8b5cf6; border-radius: 12px; padding: 12px 18px; z-index: 9999; display: none; max-width: 90%; text-align: center; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">Kollect <span>Vault</span></a>
+      <button class="burger" id="burger" aria-label="Menu">☰</button>
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="buy.html">Buy Pack</a></li>
+        <li><a href="pulls.html">Recent Pulls</a></li>
+        <li><a href="collection.html">My Collection</a></li>
+        <li><a href="rewards.html" class="active">Rewards</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="admin.html">Admin</a></li>
+        <li><a href="auth.html">Sign In</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container page-content">
+    <h1 class="page-title">My Rewards</h1>
+    <p class="page-sub">Check in daily, buy packs to rank up, complete quests and climb the leaderboard.</p>
+    <p class="rw-sub" id="signin" style="display:none"><a href="auth.html" style="color:#c4b5fd;font-weight:700">Sign in</a> to track and claim your rewards.</p>
+
+    <div class="rw-stats">
+      <div class="rw-stat"><small>Packs Bought</small><strong id="sPacks">0</strong></div>
+      <div class="rw-stat"><small>Rank</small><strong id="sRank">Recruit</strong></div>
+      <div class="rw-stat"><small>Vault Points</small><strong id="sPts">0</strong></div>
+      <div class="rw-stat"><small>Free Packs</small><strong id="sFree">0</strong></div>
+    </div>
+
+    <!-- DAILY CHECK-IN -->
+    <section class="rw-sec">
+      <h2>Daily Check-In</h2>
+      <p class="rw-sub" id="streakTxt">Check in every day to build your streak. Day 7 gives a free pack.</p>
+      <div class="rw-box">
+        <div class="days" id="days"></div>
+        <button class="btn btn-primary btn-lg w-full" id="btnCheckin" style="margin-top:14px">Check In</button>
+      </div>
+    </section>
+
+    <!-- PACK MILESTONES -->
+    <section class="rw-sec">
+      <h2>Pack Milestones</h2>
+      <p class="rw-sub" id="nextTxt"></p>
+      <div class="line" id="line"><div class="line-bar"><div class="line-fill" id="lineFill"></div></div></div>
+      <div class="car" id="car"></div>
+    </section>
+
+    <!-- QUESTS -->
+    <section class="rw-sec">
+      <h2>Quests</h2>
+      <p class="rw-sub">Complete a quest to earn a free Silver pack.</p>
+      <div class="rw-box" id="quests"></div>
+    </section>
+
+    <!-- FREE PACKS -->
+    <section class="rw-sec">
+      <h2>My Free Packs</h2>
+      <p class="rw-sub">Reward packs you've earned and haven't used yet.</p>
+      <div class="rw-box" id="free"></div>
+    </section>
+
+    <!-- LEADERBOARD -->
+    <section class="rw-sec">
+      <h2>Collector Race</h2>
+      <p class="rw-sub" id="prize"></p>
+      <p class="rw-sub" id="gap" style="color:#c4b5fd;font-weight:600"></p>
+      <div class="rw-box" id="board"><p class="rw-sub">Loading leaderboard...</p></div>
+    </section>
+  </div>
+
+  <footer>
+    <div class="container">Kollect Vault &copy; 2026</div>
+  </footer>
+  <div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/auth-menu.js"></script>
+<script>
+(function () {
+  var db = window.Kollect.db, auth = window.Kollect.auth, FV = firebase.firestore.FieldValue;
+
+  // ============ EDIT THESE ============
+  // Pack milestones: packs = total packs bought to unlock, rewards = free pack vouchers
+  var STAGES = [
+    { id: 'soldier',   name: 'Soldier',   packs: 5,   sym: 'I',  c: '#9ca3af', c2: '#4b5563', rewards: [{ tier: 'silver', qty: 1 }] },
+    { id: 'knight',    name: 'Knight',    packs: 10,  sym: 'II', c: '#e8a56b', c2: '#8a4a24', rewards: [{ tier: 'silver', qty: 1 }] },
+    { id: 'captain',   name: 'Captain',   packs: 25,  sym: 'III',c: '#e5e7eb', c2: '#6b7280', rewards: [{ tier: 'silver', qty: 1 }, { tier: 'gold', qty: 1 }] },
+    { id: 'commander', name: 'Commander', packs: 50,  sym: 'IV', c: '#fbbf24', c2: '#b45309', rewards: [{ tier: 'gold', qty: 2 }] },
+    { id: 'warlord',   name: 'Warlord',   packs: 75,  sym: 'V',  c: '#f87171', c2: '#991b1b', rewards: [{ tier: 'gold', qty: 2 }] },
+    { id: 'titan',     name: 'Titan',     packs: 100, sym: 'VI', c: '#a78bfa', c2: '#4c1d95', rewards: [{ tier: 'gold', qty: 2 }, { tier: 'platinum', qty: 1 }] },
+    { id: 'omega',     name: 'Omega',     packs: 500, sym: 'Ω',  c: '#22d3ee', c2: '#0e7490', rewards: [{ tier: 'gold', qty: 1 }, { tier: 'platinum', qty: 1 }, { tier: 'emerald', qty: 2 }] }
+  ];
+  // 7-day check-in cycle (pts = Vault Points, pack = optional free pack tier)
+  var DAILY = [{ pts: 10 }, { pts: 10 }, { pts: 15 }, { pts: 15 }, { pts: 20 }, { pts: 25 }, { pts: 50, pack: 'bronze' }];
+  // Quests: each gives QUEST_REWARD once. Replace the URLs with your own pages.
+  var QUEST_REWARD = { tier: 'silver', qty: 1 };
+  var QUESTS = [
+    { id: 'instagram', icon: '📸', title: 'Follow us on Instagram', url: 'https://instagram.com/yourhandle' },
+    { id: 'tiktok',    icon: '🎵', title: 'Follow us on TikTok',    url: 'https://tiktok.com/@yourhandle' },
+    { id: 'x',         icon: '✖️', title: 'Follow us on X',         url: 'https://x.com/yourhandle' },
+    { id: 'youtube',   icon: '▶️', title: 'Subscribe on YouTube',   url: 'https://youtube.com/@yourhandle' },
+    { id: 'share',     icon: '🔗', title: 'Share our page',         share: true }
+  ];
+  var PRIZE_TEXT = ''; // e.g. 'Top collector this month wins a Diamond pack!'
+  // ====================================
+
+  var user = null, ud = {}, owned = 0, vouchers = [], started = {}, scrolled = false;
+  var $ = function (id) { return document.getElementById(id); };
+  var cap = function (s) { return s.charAt(0).toUpperCase() + s.slice(1); };
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+  function ymd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function dates() { var y = new Date(); y.setDate(y.getDate() - 1); return { today: ymd(new Date()), yest: ymd(y) }; }
+  function packs() { return Math.max(Number(ud.packsBought) || 0, owned); }
+  function claimedList() { return ud.claimedMilestones || []; }
+
+  var tt;
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.style.display = 'block';
+    clearTimeout(tt); tt = setTimeout(function () { t.style.display = 'none'; }, 3500);
+  }
+  function needLogin() {
+    if (user) return false;
+    toast('Please sign in first.');
+    setTimeout(function () { window.location.href = 'auth.html'; }, 1200);
+    return true;
+  }
+
+  var bid = 0;
+  function badge(s, sz) {
+    var id = 'bg' + (bid++);
+    return '<svg width="' + sz + '" height="' + Math.round(sz * 1.19) + '" viewBox="0 0 64 76"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + s.c + '"/><stop offset="1" stop-color="' + s.c2 + '"/></linearGradient></defs>' +
+      '<path d="M32 3L59 13V38C59 56 47 68 32 73C17 68 5 56 5 38V13Z" fill="url(#' + id + ')" stroke="rgba(255,255,255,.6)" stroke-width="3"/>' +
+      '<text x="32" y="46" text-anchor="middle" font-size="26" font-weight="800" fill="#fff" font-family="Inter,sans-serif">' + s.sym + '</text></svg>';
+  }
+  function rankFor(n) {
+    var r = null;
+    STAGES.forEach(function (s) { if (n >= s.packs) r = s; });
+    return r;
+  }
+  function miniPack(r) {
+    return '<div><div class="mp t-' + r.tier + '">' + r.tier.charAt(0).toUpperCase() + '</div><div class="mpw">' + (r.qty > 1 ? '×' + r.qty + ' ' : '') + cap(r.tier) + '</div></div>';
+  }
+  function addPacks(tx, list, source) {
+    list.forEach(function (r) {
+      for (var i = 0; i < r.qty; i++) {
+        tx.set(db.collection('users').doc(user.uid).collection('rewardPacks').doc(), {
+          tier: r.tier, source: source, status: 'unused', createdAt: FV.serverTimestamp()
+        });
+      }
+    });
+  }
+  function claim(fn, okMsg) {
+    var ref = db.collection('users').doc(user.uid);
+    return db.runTransaction(function (tx) {
+      return tx.get(ref).then(function (snap) { return fn(tx, ref, snap.exists ? snap.data() : {}); });
+    }).then(function (msg) { toast(msg || okMsg); })
+      .catch(function (e) { toast(e && e.message === 'DONE' ? 'Already claimed.' : 'Could not claim: ' + (e && e.message ? e.message : e)); });
+  }
+
+  // ===== DAILY =====
+  function renderDaily() {
+    var d = dates(), ci = ud.checkin || {};
+    var claimedToday = ci.lastDate === d.today;
+    var live = (ci.lastDate === d.today || ci.lastDate === d.yest) ? (ci.streak || 0) : 0;
+    var done = claimedToday ? ((ci.streak - 1) % 7) + 1 : live % 7;
+    var h = '';
+    DAILY.forEach(function (r, i) {
+      var cls = 'day' + (i < done ? ' done' : '') + (!claimedToday && i === done ? ' today' : '') + (r.pack ? ' big' : '');
+      h += '<div class="' + cls + '">Day ' + (i + 1) + '<b>' + (r.pack ? '🎁' : '+' + r.pts) + '</b>' + (i < done ? '✓' : (r.pack ? cap(r.pack) : 'pts')) + '</div>';
+    });
+    $('days').innerHTML = h;
+    $('streakTxt').textContent = '🔥 Current streak: ' + live + ' day' + (live === 1 ? '' : 's') + '. Day 7 gives a free pack.';
+    var b = $('btnCheckin');
+    b.disabled = claimedToday;
+    b.textContent = claimedToday ? 'Checked in today ✓ — come back tomorrow' : 'Check In';
+  }
+  $('btnCheckin').addEventListener('click', function () {
+    if (needLogin()) return;
+    claim(function (tx, ref, d0) {
+      var dt = dates(), ci = d0.checkin || {};
+      if (ci.lastDate === dt.today) throw new Error('DONE');
+      var streak = ci.lastDate === dt.yest ? (ci.streak || 0) + 1 : 1;
+      var r = DAILY[(streak - 1) % 7];
+      tx.set(ref, { checkin: { lastDate: dt.today, streak: streak }, points: FV.increment(r.pts) }, { merge: true });
+      if (r.pack) addPacks(tx, [{ tier: r.pack, qty: 1 }], 'daily');
+      return 'Day ' + (((streak - 1) % 7) + 1) + ' claimed: +' + r.pts + ' points' + (r.pack ? ' + a free ' + cap(r.pack) + ' pack!' : '');
+    });
+  });
+
+  // ===== MILESTONES =====
+  function buildLine() {
+    var line = $('line');
+    STAGES.forEach(function (s, i) {
+      var n = document.createElement('div');
+      n.className = 'node'; n.id = 'node-' + s.id;
+      n.style.left = ((i + 1) / STAGES.length * 100) + '%';
+      n.innerHTML = '<em>' + s.packs + '</em>';
+      n.addEventListener('click', function () { centerCard(i, true); });
+      line.appendChild(n);
+    });
+  }
+  function fillPct(p) {
+    var pts = [0].concat(STAGES.map(function (s) { return s.packs; })), n = STAGES.length;
+    if (p >= pts[n]) return 100;
+    for (var j = 0; j < n; j++) if (p < pts[j + 1]) return (j + (p - pts[j]) / (pts[j + 1] - pts[j])) / n * 100;
+    return 100;
+  }
+  function centerCard(i, smooth) {
+    var car = $('car'), c = car.children[i];
+    if (c) car.scrollTo({ left: c.offsetLeft - (car.clientWidth - c.offsetWidth) / 2, behavior: smooth ? 'smooth' : 'auto' });
+  }
+  function renderStages() {
+    var p = packs(), cl = claimedList(), cur = -1;
+    STAGES.forEach(function (s, i) { if (cur < 0 && cl.indexOf(s.id) < 0) cur = i; });
+    if (cur < 0) cur = STAGES.length - 1;
+    var h = '';
+    STAGES.forEach(function (s, i) {
+      var locked = p < s.packs, claimed = cl.indexOf(s.id) > -1;
+      var foot = locked ? '' : (claimed ? '<div class="done-tag">✓ Claimed</div>' : '<button class="btn btn-primary w-full" data-claim="' + s.id + '">Claim Reward</button>');
+      h += '<div class="st' + (locked ? ' locked' : '') + (claimed ? ' claimed' : '') + (i === cur ? ' cur' : '') + '" style="--c:' + s.c + '">' +
+        '<div class="st-top">' + badge(s, 64) + '<h3>' + s.name + '</h3><p>' + s.packs + ' packs bought</p></div>' +
+        '<div class="st-rw"><div class="rw-packs">' + s.rewards.map(miniPack).join('') + '</div>' + foot +
+        '<div class="lock"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>' +
+        (s.packs - p) + ' more pack' + (s.packs - p === 1 ? '' : 's') + '</div></div></div>';
+    });
+    $('car').innerHTML = h;
+    $('lineFill').style.width = fillPct(p) + '%';
+    STAGES.forEach(function (s) { $('node-' + s.id).classList.toggle('on', p >= s.packs); });
+    var nx = null; STAGES.forEach(function (s) { if (!nx && p < s.packs) nx = s; });
+    $('nextTxt').textContent = nx ? 'Next rank: ' + nx.name + ' — ' + (nx.packs - p) + ' more pack' + (nx.packs - p === 1 ? '' : 's') + '.' : 'You reached the top rank. Legend.';
+    if (!scrolled) { scrolled = true; requestAnimationFrame(function () { centerCard(cur, false); }); }
+  }
+  $('car').addEventListener('click', function (e) {
+    var id = e.target.getAttribute && e.target.getAttribute('data-claim');
+    if (!id || needLogin()) return;
+    var s = STAGES.filter(function (x) { return x.id === id; })[0];
+    claim(function (tx, ref, d0) {
+      if ((d0.claimedMilestones || []).indexOf(id) > -1) throw new Error('DONE');
+      if (packs() < s.packs) throw new Error('Not unlocked yet');
+      addPacks(tx, s.rewards, 'milestone:' + id);
+      tx.set(ref, { claimedMilestones: FV.arrayUnion(id) }, { merge: true });
+      return s.name + ' reward claimed!';
+    });
+  });
+
+  // ===== QUESTS =====
+  function renderQuests() {
+    var cl = ud.claimedQuests || [], h = '';
+    QUESTS.forEach(function (q) {
+      var btn;
+      if (cl.indexOf(q.id) > -1) btn = '<span class="done-tag">✓ Done</span>';
+      else if (started[q.id] && Date.now() - started[q.id] > 4000) btn = '<button class="btn btn-primary" data-q="claim:' + q.id + '">Claim</button>';
+      else if (started[q.id]) btn = '<button class="btn btn-secondary" disabled>Checking...</button>';
+      else btn = '<button class="btn btn-secondary" data-q="go:' + q.id + '">' + (q.share ? 'Share' : 'Follow') + '</button>';
+      h += '<div class="qrow"><div class="qicon">' + q.icon + '</div><div class="qtxt">' + q.title + '<small>Reward: 1 ' + cap(QUEST_REWARD.tier) + ' pack</small></div>' + btn + '</div>';
+    });
+    $('quests').innerHTML = h;
+  }
+  $('quests').addEventListener('click', function (e) {
+    var v = e.target.getAttribute && e.target.getAttribute('data-q');
+    if (!v || needLogin()) return;
+    var parts = v.split(':'), q = QUESTS.filter(function (x) { return x.id === parts[1]; })[0];
+    if (parts[0] === 'go') {
+      started[q.id] = Date.now();
+      if (q.share) {
+        var url = window.location.origin + '/index.html';
+        if (navigator.share) navigator.share({ title: 'Kollect Vault', url: url }).catch(function () {});
+        else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { toast('Link copied — paste it anywhere to share!'); });
+      } else {
+        window.open(q.url, '_blank');
+      }
+      renderQuests();
+      setTimeout(renderQuests, 4200);
+    } else {
+      claim(function (tx, ref, d0) {
+        if ((d0.claimedQuests || []).indexOf(q.id) > -1) throw new Error('DONE');
+        addPacks(tx, [QUEST_REWARD], 'quest:' + q.id);
+        tx.set(ref, { claimedQuests: FV.arrayUnion(q.id) }, { merge: true });
+        return 'Quest complete! Free ' + cap(QUEST_REWARD.tier) + ' pack added.';
+      });
+    }
+  });
+
+  // ===== FREE PACKS =====
+  function renderFree() {
+    var counts = {}, order = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'emerald'];
+    vouchers.forEach(function (v) { counts[v.tier] = (counts[v.tier] || 0) + 1; });
+    var h = order.filter(function (t) { return counts[t]; }).map(function (t) { return miniPack({ tier: t, qty: counts[t] }); }).join('');
+    $('free').innerHTML = h ? '<div class="free-row">' + h + '</div>' : '<p class="rw-sub" style="margin:0">No free packs yet. Check in, rank up or finish a quest!</p>';
+    $('sFree').textContent = vouchers.length;
+  }
+
+  // ===== LEADERBOARD =====
+  var boardRows = [];
+  function renderBoard() {
+    $('prize').textContent = PRIZE_TEXT || 'Buy packs to climb the ranks. The collector with the most packs leads the race.';
+    if (!boardRows.length) { $('board').innerHTML = '<p class="rw-sub" style="margin:0">No collectors ranked yet. Be the first!</p>'; $('gap').textContent = ''; return; }
+    var medals = ['🥇', '🥈', '🥉'], h = '', myRank = -1;
+    boardRows.forEach(function (r, i) {
+      var me = user && r.id === user.uid; if (me) myRank = i;
+      var s = rankFor(r.packs);
+      h += '<div class="lb' + (me ? ' me' : '') + '"><div class="rk">' + (medals[i] || (i + 1)) + '</div>' +
+        '<div>' + (s ? badge(s, 26) : '') + '</div><div class="nm">' + esc(r.name || 'Collector') + (me ? ' (you)' : '') + '</div><div class="pk">' + r.packs + '</div></div>';
+    });
+    $('board').innerHTML = h;
+    var lead = boardRows[0].packs, mine = packs();
+    $('gap').textContent = user ? (myRank === 0 ? '👑 You are leading the race!' : (mine >= lead ? 'You are tied for the lead!' : 'You are ' + (lead - mine) + ' pack' + (lead - mine === 1 ? '' : 's') + ' behind #1.')) : '';
+  }
+  db.collection('leaderboard').orderBy('packsBought', 'desc').limit(25).onSnapshot(function (snap) {
+    boardRows = [];
+    snap.forEach(function (d) { var x = d.data(); boardRows.push({ id: d.id, name: x.name, packs: Number(x.packsBought) || 0 }); });
+    renderBoard();
+  }, function (err) {
+    console.warn('Leaderboard failed:', err);
+    $('board').innerHTML = '<p class="rw-sub" style="margin:0">Leaderboard unavailable.</p>';
+  });
+
+  // ===== RENDER ALL =====
+  function renderAll() {
+    var p = packs(), r = rankFor(p);
+    $('sPacks').textContent = p;
+    $('sRank').textContent = r ? r.name : 'Recruit';
+    $('sPts').textContent = Number(ud.points) || 0;
+    $('signin').style.display = user ? 'none' : 'block';
+    renderDaily(); renderStages(); renderQuests(); renderFree(); renderBoard();
+  }
+
+  buildLine();
+  renderAll();
+
+  auth.onAuthStateChanged(function (u) {
+    user = u;
+    if (!u) { ud = {}; owned = 0; vouchers = []; renderAll(); return; }
+    var ref = db.collection('users').doc(u.uid);
+    ref.onSnapshot(function (s) { ud = s.exists ? s.data() : {}; renderAll(); });
+    ref.collection('collection').get().then(function (s) { owned = s.size; renderAll(); }).catch(function () {});
+    ref.collection('rewardPacks').where('status', '==', 'unused').onSnapshot(function (s) {
+      vouchers = []; s.forEach(function (d) { vouchers.push(d.data()); }); renderFree();
+    });
+  });
+})();
+</script>
+</body>
+</html>
