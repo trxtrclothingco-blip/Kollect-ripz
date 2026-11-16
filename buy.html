@@ -230,6 +230,20 @@
       box-shadow: 0 0 0 1px #8b5cf6 inset;
     }
 
+    /* Free pack banner */
+    .free-banner {
+      display: none;
+      margin-bottom: 18px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid #10b981;
+      background: rgba(16, 185, 129, 0.12);
+      color: #6ee7b7;
+      font-weight: 700;
+      font-size: 0.92rem;
+      text-align: center;
+    }
+
     /* ===== GRADED TIERS ===== */
 
     /* Pack carousel (replaces the clickable tier tabs) */
@@ -324,6 +338,8 @@
   <div class="container page-content">
     <h1 class="page-title">Buy a Mystery Pack</h1>
     <p class="page-sub">Pick a category and a tier. One graded Grade 9 or Grade 10 card from that tier's value range, or a raw card. Instant reveal.</p>
+
+    <div class="free-banner" id="freeBanner"></div>
 
     <!-- Category selector -->
     <div class="cat-tabs" id="catTabs">
@@ -534,7 +550,7 @@
       </div>
 
       <button class="btn btn-primary w-full" id="btnPayNow">Pay Now — £25</button>
-      <p class="text-dim text-center mt-2" style="font-size:0.78rem">Demo checkout — no real charge</p>
+      <p class="text-dim text-center mt-2" style="font-size:0.78rem" id="payNote">Demo checkout — no real charge</p>
     </div>
   </div>
 
@@ -587,6 +603,42 @@
   var busy = false;
 
   // =====================================================================
+  // FREE PACK (voucher) FROM rewards.html
+  // Link looks like buy.html?tier=gold&voucher=ABC123
+  // =====================================================================
+  var qs = new URLSearchParams(window.location.search);
+  var voucherId = qs.get('voucher');
+  var voucherTier = qs.get('tier');
+
+  function voucherOn(cat, kind) {
+    return !!voucherId && kind === 'graded' && selectedTier[cat].id === voucherTier;
+  }
+  function voucherRef(uid) {
+    return db.collection('users').doc(uid).collection('rewardPacks').doc(voucherId);
+  }
+  // Marks the voucher used (fails if it was already used)
+  function useVoucher(uid) {
+    var ref = voucherRef(uid);
+    return db.runTransaction(function (tx) {
+      return tx.get(ref).then(function (s) {
+        if (!s.exists || s.data().status !== 'unused') throw new Error('This free pack has already been used.');
+        tx.update(ref, { status: 'used' });
+      });
+    }).then(function () {
+      voucherId = null;
+      try { window.history.replaceState(null, '', 'buy.html'); } catch (e) {}
+      document.getElementById('freeBanner').style.display = 'none';
+    });
+  }
+  // If the tier had no stock, give the free pack back
+  function refundVoucher(uid, tier) {
+    return db.collection('users').doc(uid).collection('rewardPacks').add({
+      tier: tier.id, source: 'refund', status: 'unused',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+
+  // =====================================================================
   // GRADED TIERS — EDIT THESE (one list per category)
   // price = what the customer pays
   // min / max = the card's "market" value range that tier can pull
@@ -637,6 +689,17 @@
     football: FOOTBALL_TIERS[1]
   };
   var stockByTier = { pokemon: null, football: null };  // filled in once inventory loads
+
+  // If opened from a free pack link, start on that tier
+  if (voucherTier) {
+    CAT_IDS.forEach(function (c) {
+      var t = CATS[c].tiers.filter(function (x) { return x.id === voucherTier; })[0];
+      if (t) selectedTier[c] = t;
+    });
+    var fb = document.getElementById('freeBanner');
+    fb.textContent = '🎁 Free ' + voucherTier.charAt(0).toUpperCase() + voucherTier.slice(1) + ' pack ready. Choose Pokemon or Football, then tap Open Free Pack.';
+    fb.style.display = voucherId ? 'block' : 'none';
+  }
 
   function el(cat, name) {
     return document.getElementById(CATS[cat].prefix + name);
@@ -784,7 +847,9 @@
     }
 
     btn.disabled = soldOut;
-    btn.textContent = soldOut ? 'Sold out' : 'Purchase for ' + money(t.price);
+    if (soldOut) btn.textContent = 'Sold out';
+    else if (voucherOn(cat, 'graded')) btn.textContent = 'Open Free Pack 🎁';
+    else btn.textContent = 'Purchase for ' + money(t.price);
   }
 
   // Counts available graded cards per tier (best effort; page still works if it fails)
@@ -918,6 +983,16 @@
     document.getElementById('payItemPrice').textContent = money2(price);
     document.getElementById('payTotal').textContent = money2(price);
     document.getElementById('btnPayNow').textContent = 'Pay Now — ' + money(price);
+    document.getElementById('payNote').textContent = 'Demo checkout — no real charge';
+
+    // Free reward pack: no payment
+    if (voucherOn(cat, kind)) {
+      document.getElementById('payItemName').textContent = label + ' 🎁';
+      document.getElementById('payItemPrice').textContent = 'FREE';
+      document.getElementById('payTotal').textContent = '£0.00';
+      document.getElementById('btnPayNow').textContent = 'Open Free Pack';
+      document.getElementById('payNote').textContent = 'Reward pack from your Rewards page';
+    }
   }
 
   function startPurchase(cat, kind) {
@@ -983,7 +1058,19 @@
     busy = true;
 
     var cat = selectedCat;
-    var pullPromise = pullCard(uid, cat, selectedKind, selectedTier[cat]);
+    var tier = selectedTier[cat];
+    var usingVoucher = voucherOn(cat, selectedKind);
+
+    // Free pack: mark the voucher used first, then pull the card
+    var pullPromise = (usingVoucher ? useVoucher(uid) : Promise.resolve())
+      .then(function () { return pullCard(uid, cat, selectedKind, tier); })
+      .catch(function (err) {
+        // Out of stock: give the free pack back
+        if (usingVoucher && err && err.message === 'SOLD_OUT') {
+          return refundVoucher(uid, tier).then(function () { throw err; });
+        }
+        throw err;
+      });
 
     openOverlay(videoOverlay);
     document.getElementById('videoStatus').textContent = 'Opening your pack...';
@@ -996,7 +1083,7 @@
       closeOverlay(videoOverlay);
       busy = false;
       if (err && err.message === 'SOLD_OUT') {
-        alert('Sorry, there are no cards available in this tier right now.');
+        alert('Sorry, there are no cards available in this tier right now.' + (usingVoucher ? ' Your free pack has been returned to My Free Packs.' : ''));
       } else {
         alert('Could not open your pack: ' + (err && err.message ? err.message : err));
       }
