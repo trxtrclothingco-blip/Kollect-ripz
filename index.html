@@ -8,7 +8,28 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
   <style>
-    /* What can you pull - grails showcase */
+    .top-actions { display: flex; justify-content: center; margin: 24px 0 8px; }
+    .dash-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      max-width: 420px;
+      justify-content: center;
+      padding: 18px 28px;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-decoration: none;
+      color: #fff;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 14px;
+      box-shadow: 0 8px 28px rgba(99,102,241,0.45);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .dash-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 34px rgba(99,102,241,0.6); }
+
+    /* Carousel + grails */
     .hv-section { margin-bottom: 32px; }
     .hv-section > h2 { text-align: center; margin-bottom: 6px; }
     .hv-section > p { text-align: center; color: #6b7280; font-size: 0.9rem; margin-bottom: 18px; }
@@ -83,6 +104,49 @@
     }
     .hv-market { font-size: 0.75rem; color: #6b7280; }
     .hv-empty { color: #6b7280; font-size: 0.85rem; }
+
+    /* Recent pulls carousel */
+    .pulls-wrap { position: relative; }
+    .pulls-track { padding: 2px 2px 10px; }
+    .carousel-btn {
+      position: absolute;
+      top: 40%;
+      z-index: 2;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid #2a2f3d;
+      background: rgba(15,17,23,0.9);
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .carousel-btn.prev { left: -6px; }
+    .carousel-btn.next { right: -6px; }
+    .hv-when { font-size: 0.7rem; color: #6b7280; }
+
+    /* Grails dropdown */
+    .grails-dropdown {
+      background: #1a1d27;
+      border: 1px solid #2a2f3d;
+      border-radius: 16px;
+      margin-bottom: 32px;
+    }
+    .grails-dropdown > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 18px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .grails-dropdown > summary::-webkit-details-marker { display: none; }
+    .grails-dropdown > summary::after { content: '▾'; transition: transform .2s; }
+    .grails-dropdown[open] > summary::after { transform: rotate(180deg); }
+    .grails-body { padding: 0 18px 18px; }
+    .grails-body > p { color: #6b7280; font-size: 0.9rem; margin-bottom: 14px; }
   </style>
 </head>
 <body>
@@ -93,46 +157,63 @@
       <a href="index.html" class="logo">Kollect <span>Vault</span></a>
       <button class="burger" id="burger" aria-label="Menu">☰</button>
       <ul class="nav-menu" id="navMenu">
+        <li><a href="auth.html" id="authLink">Sign In</a></li>
         <li><a href="index.html" class="active">Home</a></li>
-        <li><a href="auth.html">Sign In</a></li>
-        <li><a href="buy.html">Buy Pack</a></li>
-        <li><a href="pulls.html">Recent Pulls</a></li>
-        <li><a href="collection.html">My Collection</a></li>
         <li><a href="dashboard.html">Dashboard</a></li>
-        <li><a href="admin.html">Admin</a></li>
       </ul>
     </div>
   </nav>
 
-  <!-- HERO -->
   <div class="container">
+    <!-- DASHBOARD BUTTON -->
+    <div class="top-actions">
+      <a href="dashboard.html" class="dash-btn">📊 Go to Your Dashboard</a>
+    </div>
+
+    <!-- HERO -->
     <div class="hero">
       <h1>Mystery Graded Packs</h1>
       <p>Every pack contains a verified Grade 9 or Grade 10 Pokemon card. Pay £25, open instantly, and choose cash buyback or consign with Kollect.</p>
       <a href="buy.html" class="btn btn-primary btn-lg">Open a Pack </a>
     </div>
 
-    <!-- WHAT CAN YOU PULL: top 10 grails in each box -->
+    <!-- RECENTLY PULLED CARDS -->
     <div class="hv-section">
-      <h2>What can you pull?</h2>
-      <p>The top 10 grails still in the vault. Redeemed cards disappear.</p>
-
-      <div class="hv-grid">
-        <div class="hv-box">
-          <h3>Raw Hits</h3>
-          <div class="hv-track" id="rawHitsTrack">
-            <p class="hv-empty">Loading raw hits...</p>
+      <h2>Recently pulled</h2>
+      <p>The latest cards pulled from all packs.</p>
+      <div class="hv-box">
+        <div class="pulls-wrap">
+          <button class="carousel-btn prev" id="pullsPrev" aria-label="Previous">‹</button>
+          <div class="hv-track pulls-track" id="recentPullsTrack">
+            <p class="hv-empty">Loading recent pulls...</p>
           </div>
-        </div>
-
-        <div class="hv-box">
-          <h3>Graded Hits</h3>
-          <div class="hv-track" id="gradedHitsTrack">
-            <p class="hv-empty">Loading graded hits...</p>
-          </div>
+          <button class="carousel-btn next" id="pullsNext" aria-label="Next">›</button>
         </div>
       </div>
     </div>
+
+    <!-- GRAILS DROPDOWN -->
+    <details class="grails-dropdown">
+      <summary>Grails</summary>
+      <div class="grails-body">
+        <p>The top 10 grails still in the vault. Redeemed cards disappear.</p>
+        <div class="hv-grid">
+          <div class="hv-box">
+            <h3>Raw Hits</h3>
+            <div class="hv-track" id="rawHitsTrack">
+              <p class="hv-empty">Loading raw hits...</p>
+            </div>
+          </div>
+
+          <div class="hv-box">
+            <h3>Graded Hits</h3>
+            <div class="hv-track" id="gradedHitsTrack">
+              <p class="hv-empty">Loading graded hits...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </details>
 
     <div class="grid-3 mb-3">
       <div class="card">
@@ -173,14 +254,17 @@
 <script src="js/nav.js"></script>
 <script src="js/auth-menu.js"></script>
 
-<!-- Grails showcase: live top 10 most valuable available cards in each box -->
 <script>
 (function () {
   var TOP_N = 10;
+  var RECENT_N = 15;
+  // ⚠️ Set these to match the collection/field your Recent Pulls page uses
+  var PULLS_COLLECTION = 'pulls';
+  var PULLS_TIME_FIELD = 'createdAt';
+
   if (!window.Kollect || !window.Kollect.db) return;
   var db = window.Kollect.db;
 
-  // Handles numbers or text like "£1,250.50"
   function val(v) {
     if (typeof v === 'number') return v;
     var n = parseFloat(String(v || '').replace(/[^0-9.]/g, ''));
@@ -191,9 +275,12 @@
     var item = document.createElement('div');
     item.className = 'hv-item';
 
-    var r = document.createElement('span');
-    r.className = 'hv-rank';
-    r.textContent = '#' + rank;
+    if (rank) {
+      var r = document.createElement('span');
+      r.className = 'hv-rank';
+      r.textContent = '#' + rank;
+      item.appendChild(r);
+    }
 
     var img = document.createElement('img');
     img.src = c.imageUrl || '';
@@ -212,7 +299,6 @@
     market.className = 'hv-market';
     market.textContent = 'Market £' + val(c.market);
 
-    item.appendChild(r);
     item.appendChild(img);
     item.appendChild(badge);
     item.appendChild(name);
@@ -220,7 +306,7 @@
     return item;
   }
 
-  // Live listener: re-ranks whenever a card is added, removed or redeemed
+  // Grails: live top 10 most valuable available cards
   function watch(collName, trackId, isRaw) {
     var track = document.getElementById(trackId);
     if (!track) return;
@@ -230,16 +316,13 @@
       .onSnapshot(function (snap) {
         var cards = [];
         snap.forEach(function (d) { cards.push(d.data()); });
-
         cards.sort(function (a, b) { return val(b.market) - val(a.market); });
-
         track.innerHTML = '';
 
         if (!cards.length) {
           track.innerHTML = '<p class="hv-empty">No ' + (isRaw ? 'raw' : 'graded') + ' cards available right now.</p>';
           return;
         }
-
         cards.slice(0, TOP_N).forEach(function (c, i) {
           track.appendChild(build(c, i + 1, isRaw));
         });
@@ -249,8 +332,67 @@
       });
   }
 
+  // Recent pulls carousel (all packs)
+  function ago(ts) {
+    var d = ts && ts.toDate ? ts.toDate() : (ts ? new Date(ts) : null);
+    if (!d || isNaN(d)) return '';
+    var s = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    return Math.floor(s / 86400) + 'd ago';
+  }
+
+  function watchPulls() {
+    var track = document.getElementById('recentPullsTrack');
+    if (!track) return;
+
+    db.collection(PULLS_COLLECTION)
+      .orderBy(PULLS_TIME_FIELD, 'desc')
+      .limit(RECENT_N)
+      .onSnapshot(function (snap) {
+        track.innerHTML = '';
+        if (snap.empty) {
+          track.innerHTML = '<p class="hv-empty">No pulls yet. Be the first!</p>';
+          return;
+        }
+        snap.forEach(function (d) {
+          var c = d.data();
+          var card = {
+            imageUrl: c.imageUrl,
+            name: c.name || c.cardName,
+            grade: c.grade,
+            grader: c.grader,
+            market: c.market
+          };
+          var isRaw = !c.grade && !c.grader;
+          var item = build(card, null, isRaw);
+          var t = ago(c[PULLS_TIME_FIELD]);
+          if (t) {
+            var w = document.createElement('div');
+            w.className = 'hv-when';
+            w.textContent = t;
+            item.appendChild(w);
+          }
+          track.appendChild(item);
+        });
+      }, function (err) {
+        console.warn('Recent pulls failed:', err);
+        track.innerHTML = '<p class="hv-empty">Unavailable.</p>';
+      });
+
+    var step = 280;
+    document.getElementById('pullsPrev').addEventListener('click', function () {
+      track.scrollBy({ left: -step, behavior: 'smooth' });
+    });
+    document.getElementById('pullsNext').addEventListener('click', function () {
+      track.scrollBy({ left: step, behavior: 'smooth' });
+    });
+  }
+
   watch('rawInventory', 'rawHitsTrack', true);
   watch('inventory', 'gradedHitsTrack', false);
+  watchPulls();
 })();
 </script>
 </body>
