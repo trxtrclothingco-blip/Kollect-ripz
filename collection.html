@@ -205,6 +205,7 @@
   var lastFocus = null;
 
   var SELL_URL = 'https://www.kollect100.com/sell-with-us.php';
+  var GRADE_URL = 'https://getgraded.co.uk';
 
   function escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -215,9 +216,13 @@
       .replace(/"/g, '&quot;');
   }
 
-  function gradeLabel(c) {
+  function isRaw(c) {
     // Raw cards have no grade
-    return Number(c.grade) ? escapeHtml(c.grader) + ' ' + escapeHtml(c.grade) : 'Raw';
+    return !Number(c.grade);
+  }
+
+  function gradeLabel(c) {
+    return isRaw(c) ? 'Raw' : escapeHtml(c.grader) + ' ' + escapeHtml(c.grade);
   }
 
   function badgeHtml(c) {
@@ -297,6 +302,9 @@
     modalActions.innerHTML =
       '<button class="btn btn-success" data-action="cash" data-id="' + escapeHtml(c.id) + '" data-buyback="' + buyback + '">Cash £' + buyback + '</button>' +
       '<button class="btn btn-primary" data-action="consign" data-id="' + escapeHtml(c.id) + '">Sell with Kollect</button>' +
+      (isRaw(c)
+        ? '<button class="btn btn-primary" data-action="grade" data-id="' + escapeHtml(c.id) + '">Send for grading</button>'
+        : '') +
       '<button class="btn btn-secondary" data-action="withdraw" data-id="' + escapeHtml(c.id) + '">Get physical card</button>';
   }
 
@@ -344,7 +352,7 @@
     if (e.key === 'Escape' && openCardId) closeModal();
   });
 
-  /* ---------- Actions (Cash out / Sell with Kollect / Get physical card) ---------- */
+  /* ---------- Actions (Cash out / Sell with Kollect / Send for grading / Get physical card) ---------- */
   modalActions.addEventListener('click', function (e) {
     var btn = e.target.closest('button[data-action]');
     if (!btn) return;
@@ -369,6 +377,11 @@
         btn.disabled = false;
         alert('Could not consign this card: ' + err.message);
       });
+    }
+
+    if (action === 'grade') {
+      if (!confirm('Send this card for grading? You will be taken to Get Graded.')) return;
+      window.location.href = GRADE_URL;
     }
 
     if (action === 'withdraw') {
