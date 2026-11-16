@@ -10,24 +10,10 @@
   <style>
     .top-actions { display: flex; justify-content: center; margin: 24px 0 8px; }
     .dash-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
       width: 100%;
       max-width: 420px;
       justify-content: center;
-      padding: 18px 28px;
-      font-size: 1.25rem;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      text-decoration: none;
-      color: #fff;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      border-radius: 14px;
-      box-shadow: 0 8px 28px rgba(99,102,241,0.45);
-      transition: transform .15s, box-shadow .15s;
     }
-    .dash-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 34px rgba(99,102,241,0.6); }
 
     /* Carousel + grails */
     .hv-section { margin-bottom: 32px; }
@@ -125,27 +111,28 @@
     .carousel-btn.next { right: -6px; }
     .hv-when { font-size: 0.7rem; color: #6b7280; }
 
-    /* Grails dropdown */
+    /* Grails / FAQ dropdowns */
     .grails-dropdown {
-      background: #1a1d27;
-      border: 1px solid #2a2f3d;
-      border-radius: 16px;
-      margin-bottom: 32px;
+      background: none;
+      border: none;
+      margin-bottom: 16px;
     }
     .grails-dropdown > summary {
       list-style: none;
       cursor: pointer;
-      padding: 14px 18px;
-      font-weight: 700;
-      font-size: 1.05rem;
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
+      gap: 10px;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
     }
     .grails-dropdown > summary::-webkit-details-marker { display: none; }
     .grails-dropdown > summary::after { content: '▾'; transition: transform .2s; }
     .grails-dropdown[open] > summary::after { transform: rotate(180deg); }
-    .grails-body { padding: 0 18px 18px; }
+    .grails-body { padding: 18px 0 0; }
     .grails-body > p { color: #6b7280; font-size: 0.9rem; margin-bottom: 14px; }
   </style>
 </head>
@@ -167,7 +154,7 @@
   <div class="container">
     <!-- DASHBOARD BUTTON -->
     <div class="top-actions">
-      <a href="dashboard.html" class="dash-btn">📊 Go to Your Dashboard</a>
+      <a href="dashboard.html" class="btn btn-primary btn-lg dash-btn">📊 Go to Your Dashboard</a>
     </div>
 
     <!-- HERO -->
@@ -194,7 +181,7 @@
 
     <!-- GRAILS DROPDOWN -->
     <details class="grails-dropdown">
-      <summary>Grails</summary>
+      <summary class="btn btn-primary btn-lg">Grails</summary>
       <div class="grails-body">
         <p>The top 10 grails still in the vault. Redeemed cards disappear.</p>
         <div class="hv-grid">
@@ -217,7 +204,7 @@
 
     <!-- FAQ DROPDOWN -->
     <details class="grails-dropdown faq-dropdown">
-      <summary>FAQ</summary>
+      <summary class="btn btn-primary btn-lg">FAQ</summary>
       <div class="grails-body">
     <div class="grid-3 mb-3">
       <div class="card">
