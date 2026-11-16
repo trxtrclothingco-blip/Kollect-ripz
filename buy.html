@@ -229,6 +229,10 @@
       100% { transform: translateX(110vw) translateY(-60px) scale(0.9); opacity: 0; }
     }
 
+    /* Vault Points payment */
+    .pts-balance { margin: 0 0 14px; color: #c4b5fd; font-weight: 700; font-size: 0.92rem; text-align: center; min-height: 1.2em; }
+    .pts-btn { margin-top: 10px; }
+
     /* ===== CATEGORY SELECTOR ===== */
     .cat-tabs {
       display: flex;
@@ -384,6 +388,7 @@
     <p class="page-sub">Pick a category and a tier. One graded Grade 9 or Grade 10 card from that tier's value range, or a raw card. Instant reveal.</p>
 
     <div class="free-banner" id="freeBanner"></div>
+    <p class="pts-balance" id="ptsBalance"></p>
 
     <!-- Category selector -->
     <div class="cat-tabs" id="catTabs">
@@ -420,6 +425,7 @@
               <li>Or consign via Kollect in one click</li>
             </ul>
             <button class="btn btn-primary btn-lg w-full" id="pkBuy">Purchase</button>
+            <button class="btn btn-secondary btn-lg w-full pts-btn" id="pkBuyPts">Use Vault Points</button>
             <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
 
             <div class="pulls-showcase">
@@ -490,6 +496,7 @@
               <li>Or consign via Kollect in one click</li>
             </ul>
             <button class="btn btn-primary btn-lg w-full" id="fbBuy">Purchase</button>
+            <button class="btn btn-secondary btn-lg w-full pts-btn" id="fbBuyPts">Use Vault Points</button>
             <p class="text-dim mt-2" style="font-size:0.8rem">Stock is reserved only after successful payment.</p>
 
             <div class="pulls-showcase">
@@ -665,6 +672,11 @@
   var POINTS_BY_TIER = { bronze: 5, silver: 7, gold: 10, platinum: 12, diamond: 15 };
   var RAW_POINTS = 2;
 
+  // Vault Points cost to buy a graded pack with points (matches the shop on rewards.html)
+  var POINTS_COST = { bronze: 1000, silver: 1500, gold: 2500, platinum: 3500, diamond: 7500 };
+  var myPoints = 0, pointsUnsub = null;
+  var selectedPay = 'money';   // 'money' or 'points'
+
   // Flying "+X Vault Points" popup
   function showPointsPop(pts) {
     var p = document.createElement('div');
@@ -693,8 +705,8 @@
   var voucherId = qs.get('voucher');
   var voucherTier = qs.get('tier');
 
-  function voucherOn(cat, kind) {
-    return !!voucherId && kind === 'graded' && selectedTier[cat].id === voucherTier;
+  function voucherOn(cat, kind, pay) {
+    return !!voucherId && kind === 'graded' && pay !== 'points' && selectedTier[cat].id === voucherTier;
   }
   function voucherRef(uid) {
     return db.collection('users').doc(uid).collection('rewardPacks').doc(voucherId);
@@ -804,8 +816,28 @@
   auth.onAuthStateChanged(function (user) {
     currentUser = user;
     watchMine();
+    watchPoints();
     renderBoard();
   });
+
+  // Live Vault Points balance
+  function renderBalance() {
+    var e = document.getElementById('ptsBalance');
+    if (e) e.textContent = (currentUser || auth.currentUser) ? 'Your Vault Points: ' + myPoints.toLocaleString() : '';
+  }
+  function watchPoints() {
+    if (pointsUnsub) { pointsUnsub(); pointsUnsub = null; }
+    myPoints = 0;
+    renderBalance();
+    CAT_IDS.forEach(renderTier);
+    var u = currentUser || auth.currentUser;
+    if (!u) return;
+    pointsUnsub = db.collection('users').doc(u.uid).onSnapshot(function (s) {
+      myPoints = s.exists ? (Number(s.data().points) || 0) : 0;
+      renderBalance();
+      CAT_IDS.forEach(renderTier);
+    }, function () {});
+  }
 
   function openOverlay(e) {
     e.classList.add('active');
@@ -935,6 +967,16 @@
     if (soldOut) btn.textContent = 'Sold out';
     else if (voucherOn(cat, 'graded')) btn.textContent = 'Open Free Pack 🎁';
     else btn.textContent = 'Purchase for ' + money(t.price);
+
+    // Pay with Vault Points
+    var pbtn = el(cat, 'BuyPts');
+    var cost = POINTS_COST[t.id];
+    var signedIn = !!(currentUser || auth.currentUser);
+    var short = signedIn && myPoints < cost;
+    pbtn.disabled = soldOut || short;
+    if (soldOut) pbtn.textContent = 'Sold out';
+    else if (short) pbtn.textContent = cost.toLocaleString() + ' Vault Points (need ' + (cost - myPoints).toLocaleString() + ' more)';
+    else pbtn.textContent = 'Use ' + cost.toLocaleString() + ' Vault Points';
   }
 
   // Counts available graded cards per tier (best effort; page still works if it fails)
@@ -974,7 +1016,7 @@
   // cat: 'pokemon' or 'football'. kind: 'graded' or 'raw'. tier: only used for graded.
   // Each category has its own graded + raw inventory collections (see CATS).
   // Graded pulls only consider cards whose market value is inside the tier's range.
-  function pullCard(uid, cat, kind, tier) {
+  function pullCard(uid, cat, kind, tier, spend, paid) {
     kind = kind || 'graded';
     var collName = kind === 'raw' ? CATS[cat].rawColl : CATS[cat].gradedColl;
     return db.collection(collName)
@@ -988,13 +1030,13 @@
         });
         if (!ids.length) throw new Error('SOLD_OUT');
         shuffle(ids);
-        return tryClaim(ids, 0, uid, collName, kind, tier, cat);
+        return tryClaim(ids, 0, uid, collName, kind, tier, cat, spend, paid);
       });
   }
 
   // Claims one card inside a transaction. If someone else got it first,
   // it moves on to the next card in the shuffled list.
-  function tryClaim(ids, i, uid, collName, kind, tier, cat) {
+  function tryClaim(ids, i, uid, collName, kind, tier, cat, spend, paid) {
     if (i >= ids.length) return Promise.reject(new Error('SOLD_OUT'));
 
     var invRef = db.collection(collName).doc(ids[i]);
@@ -1038,11 +1080,17 @@
         // Vault Points for opening a pack: 5-15 by tier, 2 for raw (pointsEarned drives the points milestones)
         var pts = kind === 'raw' ? RAW_POINTS : (POINTS_BY_TIER[tier && tier.id] || 5);
         var u = uSnap.exists ? uSnap.data() : {};
+        spend = Number(spend) || 0;
+        if (spend && (Number(u.points) || 0) < spend) throw new Error('Not enough Vault Points');
         var earned = u.pointsEarned != null ? Number(u.pointsEarned) || 0 : Number(u.points) || 0;
-        tx.set(userRef, {
-          points: firebase.firestore.FieldValue.increment(pts),
+        // Paying with points takes the cost off your balance; pointsEarned (milestones) only ever goes up
+        var upd = {
+          points: firebase.firestore.FieldValue.increment(pts - spend),
           pointsEarned: earned + pts
-        }, { merge: true });
+        };
+        // Real money spent (£) - rewards.html unlocks once this reaches £20
+        if (Number(paid) > 0) upd.totalSpent = firebase.firestore.FieldValue.increment(Number(paid));
+        tx.set(userRef, upd, { merge: true });
 
         // Monthly leaderboard: packs opened this month
         var e = eSnap.exists ? eSnap.data() : {};
@@ -1063,11 +1111,11 @@
           pulledAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        return Object.assign({}, owned, { pts: pts });
+        return Object.assign({}, owned, { pts: pts, spent: spend });
       });
     }).then(function (result) {
       if (result) return result;
-      return tryClaim(ids, i + 1, uid, collName, kind, tier, cat);
+      return tryClaim(ids, i + 1, uid, collName, kind, tier, cat, spend, paid);
     });
   }
 
@@ -1090,8 +1138,18 @@
     document.getElementById('btnPayNow').textContent = 'Pay Now — ' + money(price);
     document.getElementById('payNote').textContent = 'Demo checkout — no real charge';
 
+    // Paying with Vault Points
+    if (kind === 'graded' && selectedPay === 'points') {
+      var pc = POINTS_COST[selectedTier[cat].id].toLocaleString();
+      document.getElementById('payItemName').textContent = label + ' (Vault Points)';
+      document.getElementById('payItemPrice').textContent = pc + ' pts';
+      document.getElementById('payTotal').textContent = pc + ' pts';
+      document.getElementById('btnPayNow').textContent = 'Pay Now — ' + pc + ' Vault Points';
+      document.getElementById('payNote').textContent = 'Paid from your Vault Points balance';
+    }
+
     // Free reward pack: no payment
-    if (voucherOn(cat, kind)) {
+    if (voucherOn(cat, kind, selectedPay)) {
       document.getElementById('payItemName').textContent = label + ' 🎁';
       document.getElementById('payItemPrice').textContent = 'FREE';
       document.getElementById('payTotal').textContent = '£0.00';
@@ -1100,11 +1158,16 @@
     }
   }
 
-  function startPurchase(cat, kind) {
+  function startPurchase(cat, kind, pay) {
     var user = currentUser || auth.currentUser;
     if (!user) {
       alert('Please sign in to buy a pack.');
       window.location.href = 'auth.html';
+      return;
+    }
+    selectedPay = pay || 'money';
+    if (selectedPay === 'points' && myPoints < POINTS_COST[selectedTier[cat].id]) {
+      alert('You need ' + POINTS_COST[selectedTier[cat].id].toLocaleString() + ' Vault Points for this pack.');
       return;
     }
     setPaymentSummary(cat, kind);
@@ -1114,6 +1177,9 @@
   CAT_IDS.forEach(function (cat) {
     el(cat, 'Buy').addEventListener('click', function () {
       startPurchase(cat, 'graded');
+    });
+    el(cat, 'BuyPts').addEventListener('click', function () {
+      startPurchase(cat, 'graded', 'points');
     });
     el(cat, 'BuyRaw').addEventListener('click', function () {
       startPurchase(cat, 'raw');
@@ -1164,11 +1230,14 @@
 
     var cat = selectedCat;
     var tier = selectedTier[cat];
-    var usingVoucher = voucherOn(cat, selectedKind);
+    var usingVoucher = voucherOn(cat, selectedKind, selectedPay);
+    var spend = (selectedKind === 'graded' && selectedPay === 'points') ? POINTS_COST[tier.id] : 0;
+    // Only real purchases count toward the £20 rewards unlock (not free packs or points packs)
+    var paid = (usingVoucher || spend) ? 0 : (selectedKind === 'raw' ? CATS[cat].rawPack.price : tier.price);
 
     // Free pack: mark the voucher used first, then pull the card
     var pullPromise = (usingVoucher ? useVoucher(uid) : Promise.resolve())
-      .then(function () { return pullCard(uid, cat, selectedKind, tier); })
+      .then(function () { return pullCard(uid, cat, selectedKind, tier, spend, paid); })
       .catch(function (err) {
         // Out of stock: give the free pack back
         if (usingVoucher && err && err.message === 'SOLD_OUT') {
@@ -1232,7 +1301,7 @@
     document.getElementById('resultName').textContent = card.name;
     document.getElementById('resultMeta').textContent = gradeLabel + ' · Market £' + card.market;
     document.getElementById('resultBuyback').textContent = 'Locked buyback: £' + card.buyback.toFixed(2);
-    document.getElementById('resultPoints').textContent = '+' + card.pts + ' Vault Points earned';
+    document.getElementById('resultPoints').textContent = '+' + card.pts + ' Vault Points earned' + (card.spent ? ' (' + card.spent.toLocaleString() + ' spent)' : '');
 
     var badge = document.getElementById('resultBadge');
     badge.textContent = gradeLabel;
