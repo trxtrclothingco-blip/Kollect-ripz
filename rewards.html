@@ -18,8 +18,10 @@
     .rw-stat small { display: block; font-size: .7rem; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
     .rw-stat strong { font-size: 1.35rem; font-weight: 800; }
 
-    .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-    .day { background: #0f1117; border: 1px solid #2a2f3d; border-radius: 10px; padding: 10px 2px; text-align: center; font-size: .72rem; color: #9ca3af; }
+    /* 30-day check-in carousel */
+    .days { position: relative; display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 10px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .days::-webkit-scrollbar { display: none; }
+    .day { flex: 0 0 86px; scroll-snap-align: center; background: #0f1117; border: 1px solid #2a2f3d; border-radius: 10px; padding: 10px 4px; text-align: center; font-size: .72rem; color: #9ca3af; display: flex; flex-direction: column; justify-content: center; min-height: 86px; }
     .day b { display: block; font-size: .95rem; color: #f0f2f5; margin: 3px 0; }
     .day.done { border-color: #10b981; color: #10b981; }
     .day.today { border-color: #8b5cf6; box-shadow: 0 0 14px rgba(139,92,246,.5); color: #c4b5fd; }
@@ -188,8 +190,18 @@
     { tier: 'bronze', price: 10 }, { tier: 'silver', price: 25 }, { tier: 'gold', price: 50 },
     { tier: 'platinum', price: 100 }, { tier: 'diamond', price: 250 }
   ];
-  // 7-day check-in cycle (pts = Vault Points, pack = optional free pack tier)
-  var DAILY = [{ pts: 10 }, { pts: 10 }, { pts: 15 }, { pts: 15 }, { pts: 20 }, { pts: 25 }, { pts: 50, pack: 'bronze' }];
+  // 30-day check-in cycle. Points repeat on a 7-day pattern; pack days are listed below.
+  // After day 30 the cycle starts again at Day 1.
+  var CYCLE = 30;
+  var WEEK_PTS = [10, 10, 15, 15, 20, 25, 50];
+  var DAILY_PACKS = {
+    7:  [{ tier: 'bronze', qty: 1 }],
+    14: [{ tier: 'bronze', qty: 1 }],
+    21: [{ tier: 'bronze', qty: 1 }],
+    30: [{ tier: 'bronze', qty: 1 }, { tier: 'gold', qty: 1 }]
+  };
+  var DAILY = [];
+  for (var dn = 1; dn <= CYCLE; dn++) DAILY.push({ pts: WEEK_PTS[(dn - 1) % 7], packs: DAILY_PACKS[dn] || null });
   // Quests: each gives QUEST_REWARD once. To add new quests later, just add a line here with a new unique id.
   var QUEST_REWARD = { tier: 'silver', qty: 1 };
   var QUESTS = [
@@ -205,6 +217,7 @@
   var user = null, ud = {}, owned = 0, vouchers = [], started = {};
   var $ = function (id) { return document.getElementById(id); };
   var cap = function (s) { return s.charAt(0).toUpperCase() + s.slice(1); };
+  function packLabel(list) { return list.map(function (r) { return cap(r.tier); }).join(' + '); }
   function packs() { return Math.max(Number(ud.packsBought) || 0, owned); }
   function pts() { return Number(ud.points) || 0; }
   function earnedOf(d) { return d.pointsEarned != null ? Number(d.pointsEarned) || 0 : Number(d.points) || 0; }
@@ -250,7 +263,7 @@
       .catch(function (e) { toast(e && e.message === 'DONE' ? 'Already claimed.' : 'Could not claim: ' + (e && e.message ? e.message : e)); });
   }
 
-  // ===== DAILY CHECK-IN (24h timer, streak must be consecutive) =====
+  // ===== DAILY CHECK-IN (24h timer, streak must be consecutive, 30-day cycle) =====
   // Check-in opens 24h after the last one. Miss the 48h window and the streak resets to Day 1.
   function ciOf(d0) {
     var c = d0.checkin || {};
@@ -261,20 +274,38 @@
     var s = Math.max(0, Math.floor(ms / 1000)), p = function (n) { return ('0' + n).slice(-2); };
     return p(Math.floor(s / 3600)) + ':' + p(Math.floor(s % 3600 / 60)) + ':' + p(s % 60);
   }
+  var dayCar = $('days'), daySig = '', dayTouched = false;
+  ['touchstart', 'pointerdown', 'wheel'].forEach(function (ev) {
+    dayCar.addEventListener(ev, function () { dayTouched = true; }, { passive: true });
+  });
+  function centerDay(idx, smooth) {
+    var c = dayCar.children[idx];
+    if (c) dayCar.scrollTo({ left: c.offsetLeft - (dayCar.clientWidth - c.offsetWidth) / 2, behavior: smooth ? 'smooth' : 'auto' });
+  }
   function renderDaily() {
     var c = ciOf(ud), now = Date.now(), since = now - c.at;
     var claimedToday = c.at > 0 && since < DAY;
     var alive = c.at > 0 && since < 2 * DAY;
     var live = alive ? c.streak : 0;
     var lost = c.at > 0 && !alive && c.streak > 0;
-    var done = claimedToday ? ((c.streak - 1) % 7) + 1 : live % 7;
-    var h = '';
-    DAILY.forEach(function (r, i) {
-      var cls = 'day' + (i < done ? ' done' : '') + (!claimedToday && i === done ? ' today' : '') + (r.pack ? ' big' : '');
-      h += '<div class="' + cls + '">Day ' + (i + 1) + '<b>' + (r.pack ? '🎁' : '+' + r.pts) + '</b>' + (i < done ? '✓' : (r.pack ? cap(r.pack) : 'pts')) + '</div>';
-    });
-    $('days').innerHTML = h;
-    $('streakTxt').textContent = '🔥 Current streak: ' + live + ' day' + (live === 1 ? '' : 's') + '. Check in every day. Day 7 gives a free pack.';
+    var done = claimedToday ? ((c.streak - 1) % CYCLE) + 1 : live % CYCLE;
+
+    // Only rebuild the cards when something changes, so scrolling is never interrupted
+    var sig = done + '|' + claimedToday;
+    if (sig !== daySig) {
+      daySig = sig;
+      var keep = dayCar.scrollLeft, h = '';
+      DAILY.forEach(function (r, i) {
+        var cls = 'day' + (i < done ? ' done' : '') + (!claimedToday && i === done ? ' today' : '') + (r.packs ? ' big' : '');
+        h += '<div class="' + cls + '">Day ' + (i + 1) + '<b>+' + r.pts + '</b>' + (i < done ? '✓' : (r.packs ? '🎁 ' + packLabel(r.packs) : 'pts')) + '</div>';
+      });
+      dayCar.innerHTML = h;
+      var target = claimedToday ? done - 1 : done;
+      if (!dayTouched) requestAnimationFrame(function () { centerDay(target, false); });
+      else dayCar.scrollLeft = keep;
+    }
+
+    $('streakTxt').textContent = '🔥 Current streak: ' + live + ' day' + (live === 1 ? '' : 's') + '. Check in every day. Free Bronze pack on Days 7, 14 and 21, and Bronze + Gold on Day 30.';
     var tm = $('timer'), b = $('btnCheckin');
     tm.className = 'timer';
     if (claimedToday) {
@@ -299,10 +330,10 @@
       var now = Date.now(), c = ciOf(d0);
       if (c.at && now - c.at < DAY) throw new Error('DONE');
       var streak = (c.at && now - c.at < 2 * DAY) ? c.streak + 1 : 1;
-      var r = DAILY[(streak - 1) % 7];
+      var r = DAILY[(streak - 1) % CYCLE];
       tx.set(ref, { checkin: { lastAt: now, streak: streak }, points: FV.increment(r.pts), pointsEarned: earnedOf(d0) + r.pts }, { merge: true });
-      if (r.pack) addPacks(tx, [{ tier: r.pack, qty: 1 }], 'daily');
-      return 'Day ' + (((streak - 1) % 7) + 1) + ' claimed: +' + r.pts + ' points' + (r.pack ? ' + a free ' + cap(r.pack) + ' pack!' : '');
+      if (r.packs) addPacks(tx, r.packs, 'daily');
+      return 'Day ' + (((streak - 1) % CYCLE) + 1) + ' claimed: +' + r.pts + ' points' + (r.packs ? ' + a free ' + packLabel(r.packs) + ' pack!' : '');
     });
   });
 
@@ -513,3 +544,4 @@
 </script>
 </body>
 </html>
+
