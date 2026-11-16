@@ -8,43 +8,37 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
   <style>
-    /* Rewards banner */
+    /* Rewards + Packs banners side by side */
+    .hub-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 760px) { .hub-row { grid-template-columns: 1fr; } }
+
     .rewards-banner {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
       flex-wrap: wrap;
-      margin-bottom: 20px;
       padding: 18px 20px;
       border-radius: 16px;
       border: 1px solid #8b5cf6;
       background: linear-gradient(135deg, rgba(139,92,246,.22), rgba(34,211,238,.10));
       box-shadow: 0 0 24px rgba(139,92,246,.25);
     }
-    .rewards-banner-text { flex: 1 1 220px; min-width: 0; }
+    .packs-banner {
+      border-color: #22d3ee;
+      background: linear-gradient(135deg, rgba(34,211,238,.20), rgba(139,92,246,.10));
+      box-shadow: 0 0 24px rgba(34,211,238,.22);
+    }
+    .rewards-banner-text { flex: 1 1 160px; min-width: 0; }
     .rewards-banner-text strong { display: block; font-size: 1.05rem; margin-bottom: 4px; }
     .rewards-banner-text span { font-size: 0.88rem; color: #cbd5e1; }
     .rewards-banner .btn { flex: 0 0 auto; }
     @media (max-width: 520px) { .rewards-banner .btn { width: 100%; text-align: center; } }
-
-    /* Quick actions: 3 equal buttons in a row */
-    .qa-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-    .qa-grid .btn {
-      box-sizing: border-box;
-      width: 100%;
-      min-width: 0;
-      text-align: center;
-      padding-left: 6px;
-      padding-right: 6px;
-      font-size: 0.85rem;
-      white-space: nowrap;
-    }
-    @media (max-width: 380px) { .qa-grid .btn { font-size: 0.78rem; } }
 
     /* Compact stat cards: 3 per row */
     .stat-grid {
@@ -290,13 +284,23 @@
     <h1 class="page-title">Dashboard</h1>
     <p class="page-sub">Your vault overview and quick actions.</p>
 
-    <!-- Rewards banner -->
-    <div class="rewards-banner">
-      <div class="rewards-banner-text">
-        <strong>🎁 My Rewards</strong>
-        <span>Go to My Rewards for your daily check-in and to view your progress.</span>
+    <!-- Rewards + Packs -->
+    <div class="hub-row">
+      <div class="rewards-banner">
+        <div class="rewards-banner-text">
+          <strong>🎁 My Rewards</strong>
+          <span>Daily check-in and your progress.</span>
+        </div>
+        <a href="rewards.html" class="btn btn-primary">Rewards</a>
       </div>
-      <a href="rewards.html" class="btn btn-primary">Go to My Rewards</a>
+
+      <div class="rewards-banner packs-banner">
+        <div class="rewards-banner-text">
+          <strong>🎴 Packs</strong>
+          <span>Open a mystery graded pack.</span>
+        </div>
+        <a href="buy.html" class="btn btn-primary">Packs</a>
+      </div>
     </div>
 
     <div class="stat-grid">
@@ -332,16 +336,7 @@
       </div>
     </div>
 
-    <div class="grid-2">
-      <div class="card">
-        <h3 style="margin-bottom:12px">Quick Actions</h3>
-        <div class="qa-grid">
-          <a href="buy.html" class="btn btn-primary">Buy a Pack</a>
-          <a href="collection.html" class="btn btn-secondary">Collection</a>
-          <a href="rewards.html" class="btn btn-secondary">Rewards</a>
-        </div>
-      </div>
-
+    <div class="mt-3">
       <div class="card">
         <div id="acctSignedOut">
           <h3 style="margin-bottom:12px">Account</h3>
