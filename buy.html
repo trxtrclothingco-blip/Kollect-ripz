@@ -204,6 +204,31 @@
       box-shadow: 0 0 70px rgba(251, 191, 36, 0.55);
     }
 
+    /* Vault points popup that flies across the screen */
+    .points-pop {
+      position: fixed;
+      top: 40%;
+      left: 0;
+      z-index: 10000;
+      padding: 10px 20px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #8b5cf6, #c4b5fd);
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.3rem;
+      box-shadow: 0 0 30px rgba(139, 92, 246, 0.7);
+      pointer-events: none;
+      white-space: nowrap;
+      animation: pointsAcross 2.4s ease-in-out forwards;
+    }
+    @keyframes pointsAcross {
+      0%   { transform: translateX(-150%) translateY(0) scale(0.8); opacity: 0; }
+      15%  { opacity: 1; }
+      50%  { transform: translateX(40vw) translateY(-30px) scale(1.15); opacity: 1; }
+      85%  { opacity: 1; }
+      100% { transform: translateX(110vw) translateY(-60px) scale(0.9); opacity: 0; }
+    }
+
     /* ===== CATEGORY SELECTOR ===== */
     .cat-tabs {
       display: flex;
@@ -608,7 +633,7 @@
         <h2 id="resultName" style="margin-bottom:6px">Card Name</h2>
         <p class="text-muted" id="resultMeta">Locked buyback shown below</p>
         <p style="margin:12px 0;font-size:1.2rem;font-weight:700;color:#10b981" id="resultBuyback">£0.00</p>
-        <p style="margin:0 0 12px;color:#c4b5fd;font-weight:600">+5 Vault Points earned</p>
+        <p id="resultPoints" style="margin:0 0 12px;color:#c4b5fd;font-weight:600">+5 Vault Points earned</p>
         <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap">
           <a href="collection.html" class="btn btn-primary">View My Collection</a>
           <button class="btn btn-secondary" id="btnCloseResult">Close</button>
@@ -636,8 +661,18 @@
   var currentUser = null;
   var busy = false;
 
-  // Vault Points given for every pack opened (rewards.html shows these)
-  var PACK_POINTS = 5;
+  // Vault Points given per pack opened (rewards.html shows these)
+  var POINTS_BY_TIER = { bronze: 5, silver: 7, gold: 10, platinum: 12, diamond: 15 };
+  var RAW_POINTS = 2;
+
+  // Flying "+X Vault Points" popup
+  function showPointsPop(pts) {
+    var p = document.createElement('div');
+    p.className = 'points-pop';
+    p.textContent = '+' + pts + ' Vault Points';
+    document.body.appendChild(p);
+    setTimeout(function () { if (p.parentNode) p.parentNode.removeChild(p); }, 2500);
+  }
 
   // Leaderboard month key, e.g. "2026-11" (UTC so everyone resets at the same moment)
   function monthKey(d) {
@@ -1000,12 +1035,13 @@
         });
         tx.set(ownRef, owned);
 
-        // +5 Vault Points for opening a pack (pointsEarned drives the points milestones)
+        // Vault Points for opening a pack: 5-15 by tier, 2 for raw (pointsEarned drives the points milestones)
+        var pts = kind === 'raw' ? RAW_POINTS : (POINTS_BY_TIER[tier && tier.id] || 5);
         var u = uSnap.exists ? uSnap.data() : {};
         var earned = u.pointsEarned != null ? Number(u.pointsEarned) || 0 : Number(u.points) || 0;
         tx.set(userRef, {
-          points: firebase.firestore.FieldValue.increment(PACK_POINTS),
-          pointsEarned: earned + PACK_POINTS
+          points: firebase.firestore.FieldValue.increment(pts),
+          pointsEarned: earned + pts
         }, { merge: true });
 
         // Monthly leaderboard: packs opened this month
@@ -1027,7 +1063,7 @@
           pulledAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        return owned;
+        return Object.assign({}, owned, { pts: pts });
       });
     }).then(function (result) {
       if (result) return result;
@@ -1196,6 +1232,7 @@
     document.getElementById('resultName').textContent = card.name;
     document.getElementById('resultMeta').textContent = gradeLabel + ' · Market £' + card.market;
     document.getElementById('resultBuyback').textContent = 'Locked buyback: £' + card.buyback.toFixed(2);
+    document.getElementById('resultPoints').textContent = '+' + card.pts + ' Vault Points earned';
 
     var badge = document.getElementById('resultBadge');
     badge.textContent = gradeLabel;
@@ -1205,6 +1242,7 @@
     if (rb) rb.classList.toggle('gold', card.grade === 10);
 
     openOverlay(resultOverlay);
+    showPointsPop(card.pts);
   }
 
   document.getElementById('btnCloseResult').addEventListener('click', function () {
