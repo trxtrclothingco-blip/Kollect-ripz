@@ -7,6 +7,129 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    /* ---- Collection grid: 4 per row ---- */
+    .coll-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+    @media (max-width: 1000px) { .coll-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px)  { .coll-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+
+    .coll-tile {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .coll-tile:hover,
+    .coll-tile:focus-visible {
+      transform: translateY(-3px);
+      border-color: rgba(255,255,255,0.35);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      outline: none;
+    }
+    .coll-tile-img {
+      width: 100%;
+      aspect-ratio: 5 / 7;
+      object-fit: contain;
+      background: rgba(0,0,0,0.25);
+      display: block;
+    }
+    .coll-tile-body { padding: 10px 12px 12px; }
+    .coll-tile-name {
+      font-weight: 600;
+      font-size: 0.88rem;
+      line-height: 1.25;
+      margin-bottom: 6px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .coll-tile-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 0.78rem;
+    }
+
+    /* ---- Popup ---- */
+    .coll-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0,0,0,0.78);
+      overflow-y: auto;
+    }
+    .coll-modal.open { display: flex; }
+    .coll-modal-box {
+      position: relative;
+      width: 100%;
+      max-width: 820px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 24px;
+      padding: 24px;
+      border-radius: 16px;
+      background: #14161d;
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      color: #fff;
+    }
+    @media (max-width: 700px) {
+      .coll-modal-box { grid-template-columns: 1fr; padding: 18px; gap: 16px; }
+    }
+    .coll-modal-close {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.10);
+      color: #fff;
+      font-size: 1.2rem;
+      line-height: 1;
+      cursor: pointer;
+      z-index: 2;
+    }
+    .coll-modal-close:hover { background: rgba(255,255,255,0.22); }
+    .coll-modal-img {
+      width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.3);
+    }
+    .coll-modal-info { display: flex; flex-direction: column; gap: 12px; padding-top: 6px; }
+    .coll-modal-name { font-size: 1.3rem; font-weight: 700; line-height: 1.25; padding-right: 30px; margin: 0; }
+    .coll-details { list-style: none; margin: 0; padding: 0; font-size: 0.9rem; }
+    .coll-details li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .coll-details li span:first-child { opacity: 0.65; }
+    .coll-modal-actions { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+    .coll-modal-actions .btn { width: 100%; }
+    body.modal-open { overflow: hidden; }
+  </style>
 </head>
 <body>
 
@@ -28,13 +151,27 @@
 
   <div class="container page-content">
     <h1 class="page-title">My Collection</h1>
-    <p class="page-sub">Cards you’ve pulled. Sell now or take the locked cash offer.</p>
+    <p class="page-sub">Cards you’ve pulled. Tap a card to view details, then sell now or take the locked cash offer.</p>
 
-    <div class="grid-3" id="collectionGrid"></div>
+    <div class="coll-grid" id="collectionGrid"></div>
 
     <p class="text-dim text-center mt-3" id="collectionNote" style="font-size:0.85rem">
       Loading your collection...
     </p>
+  </div>
+
+  <!-- Card popup -->
+  <div class="coll-modal" id="cardModal" aria-hidden="true">
+    <div class="coll-modal-box" role="dialog" aria-modal="true" aria-labelledby="modalName">
+      <button class="coll-modal-close" id="modalClose" aria-label="Close">&times;</button>
+      <img class="coll-modal-img" id="modalImg" src="" alt="" />
+      <div class="coll-modal-info">
+        <h2 class="coll-modal-name" id="modalName"></h2>
+        <div id="modalBadge"></div>
+        <ul class="coll-details" id="modalDetails"></ul>
+        <div class="coll-modal-actions" id="modalActions"></div>
+      </div>
+    </div>
   </div>
 
   <footer>
@@ -55,7 +192,18 @@
 
   var grid = document.getElementById('collectionGrid');
   var note = document.getElementById('collectionNote');
+  var modal = document.getElementById('cardModal');
+  var modalImg = document.getElementById('modalImg');
+  var modalName = document.getElementById('modalName');
+  var modalBadge = document.getElementById('modalBadge');
+  var modalDetails = document.getElementById('modalDetails');
+  var modalActions = document.getElementById('modalActions');
+  var modalClose = document.getElementById('modalClose');
+
   var unsubscribe = null;
+  var cardsById = {};
+  var openCardId = null;
+  var lastFocus = null;
 
   var SELL_URL = 'https://www.kollect100.com/sell-with-us.php';
 
@@ -68,11 +216,36 @@
       .replace(/"/g, '&quot;');
   }
 
+  function gradeLabel(c) {
+    // Raw cards have no grade
+    return Number(c.grade) ? escapeHtml(c.grader) + ' ' + escapeHtml(c.grade) : 'Raw';
+  }
+
+  function badgeHtml(c) {
+    return '<span class="badge ' + (c.grade === 10 ? 'badge-10' : 'badge-9') + '">' + gradeLabel(c) + '</span>';
+  }
+
+  function formatDate(ts) {
+    try {
+      if (ts && typeof ts.toDate === 'function') {
+        return ts.toDate().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  /* ---------- Grid ---------- */
   function renderCards(cards) {
-    // Only show cards still in the collection (not withdrawn or consigned) (new)
+    // Only show cards still in the collection (not withdrawn, consigned or cashed)
     cards = cards.filter(function (c) {
       return !c.status || c.status === 'owned';
     });
+
+    cardsById = {};
+    cards.forEach(function (c) { cardsById[c.id] = c; });
+
+    // If the open card is no longer owned, close the popup
+    if (openCardId && !cardsById[openCardId]) closeModal();
 
     if (!cards.length) {
       grid.innerHTML = '';
@@ -84,32 +257,96 @@
 
     grid.innerHTML = cards.map(function (c) {
       var buyback = Number(c.buyback || 0).toFixed(2);
-
-      // Raw cards have no grade (new)
-      var gradeLabel = Number(c.grade) ? escapeHtml(c.grader) + ' ' + escapeHtml(c.grade) : 'Raw';
-
-      return '<div class="card-item">' +
-        '<img src="' + escapeHtml(c.imageUrl) + '" alt="' + escapeHtml(c.name) + '" />' +
-        '<div class="card-item-body">' +
-          '<div class="card-item-name">' + escapeHtml(c.name) + '</div>' +
-          '<div class="mb-2">' +
-            '<span class="badge ' + (c.grade === 10 ? 'badge-10' : 'badge-9') + '">' +
-              gradeLabel +
-            '</span>' +
-          '</div>' +
-          '<p class="text-dim" style="font-size:0.82rem;margin-bottom:10px">Locked buyback: £' + buyback + '</p>' +
-          '<div class="flex gap-2" style="flex-wrap:wrap">' +
-            '<button class="btn btn-success btn-sm" data-action="cash" data-id="' + escapeHtml(c.id) + '" data-buyback="' + buyback + '">Cash £' + buyback + '</button>' +
-            '<button class="btn btn-primary btn-sm" data-action="consign" data-id="' + escapeHtml(c.id) + '">Sell with Kollect</button>' +
-            '<button class="btn btn-secondary btn-sm" data-action="withdraw" data-id="' + escapeHtml(c.id) + '">Get physical card</button>' +
+      return '<div class="coll-tile" tabindex="0" role="button" data-open="' + escapeHtml(c.id) + '" aria-label="View ' + escapeHtml(c.name) + '">' +
+        '<img class="coll-tile-img" loading="lazy" src="' + escapeHtml(c.imageUrl) + '" alt="' + escapeHtml(c.name) + '" />' +
+        '<div class="coll-tile-body">' +
+          '<div class="coll-tile-name">' + escapeHtml(c.name) + '</div>' +
+          '<div class="coll-tile-meta">' +
+            badgeHtml(c) +
+            '<span class="text-dim">£' + buyback + '</span>' +
           '</div>' +
         '</div>' +
       '</div>';
     }).join('');
+
+    // Keep popup content fresh if it is open
+    if (openCardId && cardsById[openCardId]) fillModal(cardsById[openCardId]);
   }
 
-  // Cash out / Sell with Kollect / Get physical card (new)
+  /* ---------- Popup ---------- */
+  function fillModal(c) {
+    var buyback = Number(c.buyback || 0).toFixed(2);
+    var pulled = formatDate(c.pulledAt);
+
+    modalImg.src = c.imageUrl || '';
+    modalImg.alt = c.name || '';
+    modalName.textContent = c.name || '';
+    modalBadge.innerHTML = badgeHtml(c);
+
+    var rows = [];
+    rows.push(['Grade', gradeLabel(c)]);
+    rows.push(['Locked buyback', '£' + buyback]);
+    if (pulled) rows.push(['Pulled', escapeHtml(pulled)]);
+    if (c.set) rows.push(['Set', escapeHtml(c.set)]);
+    if (c.rarity) rows.push(['Rarity', escapeHtml(c.rarity)]);
+    if (c.certNumber) rows.push(['Cert #', escapeHtml(c.certNumber)]);
+
+    modalDetails.innerHTML = rows.map(function (r) {
+      return '<li><span>' + r[0] + '</span><span>' + r[1] + '</span></li>';
+    }).join('');
+
+    modalActions.innerHTML =
+      '<button class="btn btn-success" data-action="cash" data-id="' + escapeHtml(c.id) + '" data-buyback="' + buyback + '">Cash £' + buyback + '</button>' +
+      '<button class="btn btn-primary" data-action="consign" data-id="' + escapeHtml(c.id) + '">Sell with Kollect</button>' +
+      '<button class="btn btn-secondary" data-action="withdraw" data-id="' + escapeHtml(c.id) + '">Get physical card</button>';
+  }
+
+  function openModal(id) {
+    var c = cardsById[id];
+    if (!c) return;
+    lastFocus = document.activeElement;
+    openCardId = id;
+    fillModal(c);
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    modalClose.focus();
+  }
+
+  function closeModal() {
+    openCardId = null;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+    if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+  }
+
   grid.addEventListener('click', function (e) {
+    var tile = e.target.closest('[data-open]');
+    if (tile) openModal(tile.getAttribute('data-open'));
+  });
+
+  grid.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var tile = e.target.closest('[data-open]');
+    if (tile) {
+      e.preventDefault();
+      openModal(tile.getAttribute('data-open'));
+    }
+  });
+
+  modalClose.addEventListener('click', closeModal);
+
+  modal.addEventListener('click', function (e) {
+    if (e.target === modal) closeModal(); // click on backdrop
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && openCardId) closeModal();
+  });
+
+  /* ---------- Actions (Cash out / Sell with Kollect / Get physical card) ---------- */
+  modalActions.addEventListener('click', function (e) {
     var btn = e.target.closest('button[data-action]');
     if (!btn) return;
 
@@ -142,7 +379,7 @@
       cardRef.update({
         status: 'withdrawn',
         withdrawnAt: firebase.firestore.FieldValue.serverTimestamp()
-      }).catch(function (err) {
+      }).then(closeModal).catch(function (err) {
         btn.disabled = false;
         alert('Could not withdraw this card: ' + err.message);
       });
@@ -156,13 +393,14 @@
       cardRef.update({
         status: 'cashed',
         cashedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }).catch(function (err) {
+      }).then(closeModal).catch(function (err) {
         btn.disabled = false;
         alert('Could not cash out this card: ' + err.message);
       });
     }
   });
 
+  /* ---------- Data ---------- */
   auth.onAuthStateChanged(function (user) {
     if (unsubscribe) {
       unsubscribe();
@@ -170,6 +408,7 @@
     }
 
     if (!user) {
+      closeModal();
       grid.innerHTML = '';
       note.innerHTML = 'Please <a href="auth.html">sign in</a> to see your collection.';
       return;
