@@ -72,6 +72,12 @@
     a.fp { display: block; text-decoration: none; color: inherit; text-align: center; background: #0f1117; border: 1px solid #2a2f3d; border-radius: 12px; padding: 12px 14px; min-width: 92px; }
     a.fp:hover { border-color: #8b5cf6; }
     a.fp .go { display: block; margin-top: 6px; font-size: .75rem; font-weight: 700; color: #c4b5fd; }
+    .rw-lock { display: none; margin: 18px 0 0; padding: 14px 16px; border-radius: 12px; border: 1px solid #f59e0b; background: rgba(245,158,11,.12); color: #fcd34d; font-weight: 600; font-size: .92rem; text-align: center; }
+    .rw-lock a { color: #c4b5fd; font-weight: 700; }
+    .lk-bar { height: 8px; border-radius: 4px; background: #2a2f3d; margin: 10px 0 8px; overflow: hidden; }
+    .lk-bar div { height: 100%; background: linear-gradient(90deg, #f59e0b, #fde68a); border-radius: 4px; transition: width .5s; }
+    .rw-locked-sec { opacity: .55; }
+    .rw-locked-sec button { pointer-events: none; opacity: .5; }
     #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1a1d27; border: 1px solid #8b5cf6; border-radius: 12px; padding: 12px 18px; z-index: 9999; display: none; max-width: 90%; text-align: center; font-weight: 600; }
   </style>
 </head>
@@ -97,6 +103,7 @@
   <div class="container page-content">
     <h1 class="page-title">My Rewards</h1>
     <p class="page-sub">Check in daily, buy packs to rank up, earn Vault Points and complete quests.</p>
+    <div class="rw-lock" id="rwLock"></div>
     <p class="rw-sub" id="signin" style="display:none"><a href="auth.html" style="color:#c4b5fd;font-weight:700">Sign in</a> to track and claim your rewards.</p>
 
     <div class="rw-stats">
@@ -106,7 +113,7 @@
       <div class="rw-stat"><small>Free Packs</small><strong id="sFree">0</strong></div>
     </div>
 
-    <section class="rw-sec">
+    <section class="rw-sec gated">
       <h2>Daily Check-In</h2>
       <p class="rw-sub" id="streakTxt"></p>
       <div class="rw-box">
@@ -122,14 +129,14 @@
       <div class="rw-box" id="free"></div>
     </section>
 
-    <section class="rw-sec">
+    <section class="rw-sec gated">
       <h2>Pack Milestones</h2>
       <p class="rw-sub" id="pkNext"></p>
       <div class="line" id="pkLine"><div class="line-bar"><div class="line-fill" id="pkFill"></div></div></div>
       <div class="car" id="pkCar"></div>
     </section>
 
-    <section class="rw-sec">
+    <section class="rw-sec gated">
       <h2>Vault Points Milestones</h2>
       <p class="rw-sub">Based on total points earned. Spending points never lowers your progress.</p>
       <p class="rw-sub" id="ptNext" style="color:#c4b5fd;font-weight:600"></p>
@@ -137,13 +144,13 @@
       <div class="car" id="ptCar"></div>
     </section>
 
-    <section class="rw-sec">
+    <section class="rw-sec gated">
       <h2>Spend Vault Points</h2>
-      <p class="rw-sub">1,000 points = £2. Exchange points for a free pack, added to My Free Packs.</p>
+      <p class="rw-sub">Exchange points for a pack, added to My Free Packs.</p>
       <div class="rw-box" id="shop"></div>
     </section>
 
-    <section class="rw-sec">
+    <section class="rw-sec gated">
       <h2>Quests</h2>
       <p class="rw-sub">Complete a quest once to earn a free Silver pack.</p>
       <div class="rw-box" id="quests"></div>
@@ -184,11 +191,10 @@
     { id: 'p750',  name: '750 pts',   at: 750,  sym: '4', c: '#8b5cf6', c2: '#4c1d95', rewards: [{ tier: 'platinum', qty: 2 }] },
     { id: 'p1000', name: '1000 pts',  at: 1000, sym: '5', c: '#10b981', c2: '#064e3b', rewards: [{ tier: 'diamond', qty: 1 }] }
   ];
-  // Points shop: 1000 points = £2. Cost = pack price (£) / POINT_VALUE. Prices match buy.html tiers.
-  var POINT_VALUE = 0.002;
+  // Points shop: cost = Vault Points. Keep these the same as POINTS_COST in buy.html.
   var SHOP = [
-    { tier: 'bronze', price: 10 }, { tier: 'silver', price: 25 }, { tier: 'gold', price: 50 },
-    { tier: 'platinum', price: 100 }, { tier: 'diamond', price: 250 }
+    { tier: 'bronze', price: 10, cost: 1000 }, { tier: 'silver', price: 25, cost: 1500 }, { tier: 'gold', price: 50, cost: 2500 },
+    { tier: 'platinum', price: 100, cost: 3500 }, { tier: 'diamond', price: 250, cost: 7500 }
   ];
   // 30-day check-in cycle. Points repeat on a 7-day pattern; pack days are listed below.
   // After day 30 the cycle starts again at Day 1.
@@ -213,8 +219,12 @@
   ];
   // ====================================
 
+  // Users must spend this much (£) on packs before they can claim any reward
+  var UNLOCK_SPEND = 20;
+
   var DAY = 86400000;
-  var user = null, ud = {}, owned = 0, vouchers = [], started = {};
+  var user = null, ud = {}, owned = 0, vouchers = [], started = {}, udLoaded = false;
+  function spent() { return Number(ud.totalSpent) || 0; }
   var $ = function (id) { return document.getElementById(id); };
   var cap = function (s) { return s.charAt(0).toUpperCase() + s.slice(1); };
   function packLabel(list) { return list.map(function (r) { return cap(r.tier); }).join(' + '); }
@@ -258,9 +268,13 @@
   function claim(fn, okMsg) {
     var ref = db.collection('users').doc(user.uid);
     return db.runTransaction(function (tx) {
-      return tx.get(ref).then(function (snap) { return fn(tx, ref, snap.exists ? snap.data() : {}); });
+      return tx.get(ref).then(function (snap) {
+        var d0 = snap.exists ? snap.data() : {};
+        if ((Number(d0.totalSpent) || 0) < UNLOCK_SPEND) throw new Error('LOCKED');
+        return fn(tx, ref, d0);
+      });
     }).then(function (msg) { toast(msg || okMsg); })
-      .catch(function (e) { toast(e && e.message === 'DONE' ? 'Already claimed.' : 'Could not claim: ' + (e && e.message ? e.message : e)); });
+      .catch(function (e) { toast(e && e.message === 'DONE' ? 'Already claimed.' : e && e.message === 'LOCKED' ? 'Spend £' + UNLOCK_SPEND + ' on packs to unlock rewards.' : 'Could not claim: ' + (e && e.message ? e.message : e)); });
   }
 
   // ===== DAILY CHECK-IN (24h timer, streak must be consecutive, 30-day cycle) =====
@@ -494,7 +508,7 @@
   }
 
   // ===== POINTS SHOP =====
-  function cost(i) { return Math.round(i.price * 1 / POINT_VALUE); }
+  function cost(i) { return i.cost; }
   function renderShop() {
     var h = '';
     SHOP.forEach(function (i) {
@@ -524,6 +538,14 @@
     $('sRank').textContent = r ? r.name : 'Recruit';
     $('sPts').textContent = pts();
     $('signin').style.display = user ? 'none' : 'block';
+    var locked = !!user && udLoaded && spent() < UNLOCK_SPEND, lk = $('rwLock');
+    if (locked) {
+      lk.style.display = 'block';
+      lk.innerHTML = '🔒 Rewards unlock once you have spent £' + UNLOCK_SPEND + ' on packs.' +
+        '<div class="lk-bar"><div style="width:' + Math.min(100, spent() / UNLOCK_SPEND * 100) + '%"></div></div>' +
+        '£' + spent().toFixed(2) + ' of £' + UNLOCK_SPEND + ' spent. <a href="buy.html">Buy a pack</a>';
+    } else lk.style.display = 'none';
+    Array.prototype.forEach.call(document.querySelectorAll('.gated'), function (s) { s.classList.toggle('rw-locked-sec', locked); });
     renderDaily(); TRACKS.forEach(renderTrack); renderQuests(); renderFree(); renderShop();
   }
 
@@ -532,9 +554,9 @@
 
   auth.onAuthStateChanged(function (u) {
     user = u;
-    if (!u) { ud = {}; owned = 0; vouchers = []; grantRan = false; renderAll(); return; }
+    if (!u) { ud = {}; owned = 0; vouchers = []; grantRan = false; udLoaded = false; renderAll(); return; }
     var ref = db.collection('users').doc(u.uid);
-    ref.onSnapshot(function (s) { ud = s.exists ? s.data() : {}; renderAll(); grantMonthly(); });
+    ref.onSnapshot(function (s) { ud = s.exists ? s.data() : {}; udLoaded = true; renderAll(); grantMonthly(); });
     ref.collection('collection').get().then(function (s) { owned = s.size; renderAll(); }).catch(function () {});
     ref.collection('rewardPacks').where('status', '==', 'unused').onSnapshot(function (s) {
       vouchers = []; s.forEach(function (d) { var x = d.data(); x.id = d.id; vouchers.push(x); }); renderFree();
@@ -544,4 +566,3 @@
 </script>
 </body>
 </html>
-
