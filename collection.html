@@ -10,25 +10,7 @@
   <style>
     /* ---- Dashboard button ---- */
     .top-actions { display: flex; justify-content: center; margin: 24px 0 8px; }
-    .dash-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      width: 100%;
-      max-width: 420px;
-      justify-content: center;
-      padding: 18px 28px;
-      font-size: 1.25rem;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      text-decoration: none;
-      color: #fff;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      border-radius: 14px;
-      box-shadow: 0 8px 28px rgba(99,102,241,0.45);
-      transition: transform .15s, box-shadow .15s;
-    }
-    .dash-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 34px rgba(99,102,241,0.6); }
+    .top-actions .btn { width: 100%; max-width: 420px; text-align: center; }
 
     /* ---- Collection grid: 4 per row ---- */
     .coll-grid {
@@ -164,7 +146,7 @@
   <div class="container page-content">
     <!-- DASHBOARD BUTTON -->
     <div class="top-actions">
-      <a href="dashboard.html" class="dash-btn">📊 Go to Your Dashboard</a>
+      <a href="dashboard.html" class="btn btn-primary">Go to Your Dashboard</a>
     </div>
 
     <h1 class="page-title">My Collection</h1>
