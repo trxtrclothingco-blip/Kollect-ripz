@@ -93,6 +93,8 @@
       cursor: pointer;
     }
     .stat-plus:hover { background: #8b5cf6; }
+    .stat-plus.cyan { border-color: #22d3ee; background: rgba(34,211,238,.18); }
+    .stat-plus.cyan:hover { background: #22d3ee; }
 
     /* Account dropdown */
     .acct-dropdown summary {
@@ -118,12 +120,24 @@
     /* Withdrawn cards button */
     .wd-open-btn { width: 100%; text-align: center; }
 
-    /* Withdrawn cards popup carousel */
-    .wd-modal {
+    /* Consigned / Withdrawn popup carousel (themed like the Rewards + Packs banners) */
+    .wdr-modal.wd-modal {
+      --c: #8b5cf6;
+      --g1: rgba(139,92,246,.22);
+      --g2: rgba(34,211,238,.10);
       position: relative;
       max-width: 440px;
       padding: 22px 16px 16px;
       text-align: center;
+      border: 1px solid var(--c);
+      background: linear-gradient(135deg, var(--g1), var(--g2)), #0f1117;
+      box-shadow: 0 0 24px color-mix(in srgb, var(--c) 35%, transparent);
+    }
+    /* Consigned = purple (Rewards banner), Withdrawn = cyan (Packs banner) */
+    .wdr-modal.wd-modal.mode-withdrawn {
+      --c: #22d3ee;
+      --g1: rgba(34,211,238,.20);
+      --g2: rgba(139,92,246,.10);
     }
     .wd-modal h3 { margin: 0 0 12px; padding: 0 28px; }
     .wd-close-x {
@@ -132,16 +146,16 @@
       right: 12px;
       width: 32px;
       height: 32px;
-      border: 0;
+      border: 1px solid var(--c);
       border-radius: 50%;
-      background: rgba(255,255,255,0.10);
+      background: color-mix(in srgb, var(--c) 18%, transparent);
       color: #fff;
       font-size: 1.2rem;
       line-height: 1;
       cursor: pointer;
       z-index: 3;
     }
-    .wd-close-x:hover { background: rgba(255,255,255,0.22); }
+    .wd-close-x:hover { background: var(--c); }
 
     .wd-carousel { position: relative; }
     .wd-track {
@@ -166,7 +180,8 @@
       max-height: 45vh;
       object-fit: contain;
       border-radius: 10px;
-      background: #000;
+      background: rgba(0,0,0,.45);
+      border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
       margin: 0 auto 12px;
     }
     .wd-slide h4 { margin: 0 0 8px; font-size: 1rem; }
@@ -176,10 +191,10 @@
       justify-content: space-between;
       gap: 12px;
       padding: 8px 0;
-      border-top: 1px solid #2a2f3d;
+      border-top: 1px solid color-mix(in srgb, var(--c) 30%, transparent);
     }
-    .wd-detail-list li span:first-child { color: #6b7280; }
-    .wd-empty { color: #6b7280; font-size: 0.9rem; padding: 20px 0; }
+    .wd-detail-list li span:first-child { color: #cbd5e1; }
+    .wd-empty { color: #cbd5e1; font-size: 0.9rem; padding: 20px 0; }
 
     .wd-nav {
       position: absolute;
@@ -187,7 +202,7 @@
       z-index: 2;
       width: 36px;
       height: 36px;
-      border: 1px solid #2a2f3d;
+      border: 1px solid var(--c);
       border-radius: 50%;
       background: rgba(15,17,23,0.92);
       color: #fff;
@@ -196,12 +211,13 @@
       cursor: pointer;
       display: none;
     }
-    .wd-nav:hover { border-color: #8b5cf6; }
+    .wd-nav:hover { background: var(--c); }
     .wd-nav:disabled { opacity: 0.3; cursor: default; }
+    .wd-nav:disabled:hover { background: rgba(15,17,23,0.92); }
     .wd-prev { left: 4px; }
     .wd-next { right: 4px; }
     .wd-carousel.has-cards .wd-nav { display: block; }
-    .wd-counter { margin-top: 12px; font-size: 0.8rem; color: #6b7280; display: none; }
+    .wd-counter { margin-top: 12px; font-size: 0.8rem; color: #cbd5e1; display: none; }
     .wd-carousel.has-cards + .wd-counter { display: block; }
 
     /* Request withdrawal button + modals */
@@ -320,7 +336,7 @@
       </div>
       <!-- Withdrawn box -->
       <div class="stat-card">
-        <button type="button" class="stat-plus" id="btnOpenWithdrawnCards" aria-label="View withdrawn cards">+</button>
+        <button type="button" class="stat-plus cyan" id="btnOpenWithdrawnCards" aria-label="View withdrawn cards">+</button>
         <div class="stat-value" id="statWithdrawn">0</div>
         <div class="stat-label">Withdrawn</div>
       </div>
@@ -399,24 +415,15 @@
         </details>
       </div>
     </div>
-
-    <div class="card mt-3">
-      <h3 style="margin-bottom:12px">How buyback works</h3>
-      <p class="text-muted" style="font-size:0.95rem">
-        When you open a pack, we lock a cash offer at <strong>70% of the card’s market value at that moment</strong>.
-        That price never increases later. You can take the cash anytime from My Collection, or choose
-        “Sell with Kollect” to move the card into consignment.
-      </p>
-    </div>
   </div>
 
   <footer>
     <div class="container">Kollect Vault &copy; 2026</div>
   </footer>
 
-  <!-- Withdrawn cards carousel pop up -->
+  <!-- Consigned / Withdrawn cards carousel pop up -->
   <div class="wdr-overlay" id="wdCardOverlay">
-    <div class="wdr-modal wd-modal" role="dialog" aria-modal="true" aria-labelledby="wdModalTitle">
+    <div class="wdr-modal wd-modal" id="wdModalBox" role="dialog" aria-modal="true" aria-labelledby="wdModalTitle">
       <button type="button" class="wd-close-x" id="wdCardClose" aria-label="Close">&times;</button>
       <h3 id="wdModalTitle">Withdrawn Cards</h3>
       <div class="wd-carousel" id="wdCarousel">
@@ -527,8 +534,9 @@
     return '';
   }
 
-  // ===== WITHDRAWN CARDS POPUP CAROUSEL =====
+  // ===== CONSIGNED / WITHDRAWN CARDS POPUP CAROUSEL =====
   var wdCardOverlay = document.getElementById('wdCardOverlay');
+  var wdModalBox = document.getElementById('wdModalBox');
   var carousel = document.getElementById('wdCarousel');
   var track = document.getElementById('withdrawnGrid');
   var wdPrev = document.getElementById('wdPrev');
@@ -564,10 +572,12 @@
       return;
     }
 
-    // Newest withdrawal first
+    // Newest first
     list.sort(function (a, b) {
-      var ta = a.withdrawnAt && a.withdrawnAt.toMillis ? a.withdrawnAt.toMillis() : Date.now();
-      var tb = b.withdrawnAt && b.withdrawnAt.toMillis ? b.withdrawnAt.toMillis() : Date.now();
+      var ta = (a.withdrawnAt || a.consignedAt);
+      var tb = (b.withdrawnAt || b.consignedAt);
+      ta = ta && ta.toMillis ? ta.toMillis() : Date.now();
+      tb = tb && tb.toMillis ? tb.toMillis() : Date.now();
       return tb - ta;
     });
 
@@ -606,6 +616,7 @@
   function openWdCards(mode) {
     currentMode = mode === 'consigned' ? 'consigned' : 'withdrawn';
     setText('wdModalTitle', currentMode === 'consigned' ? 'Consigned Cards' : 'Withdrawn Cards');
+    wdModalBox.classList.toggle('mode-withdrawn', currentMode === 'withdrawn');
     refreshCarousel();
     wdCardOverlay.classList.add('open');
     track.style.scrollBehavior = 'auto';
