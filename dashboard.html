@@ -97,7 +97,7 @@
     .stat-plus.cyan:hover { background: #22d3ee; }
     .stat-plus.amber { border-color: #f59e0b; background: rgba(245,158,11,.18); }
     .stat-plus.amber:hover { background: #f59e0b; }
-    /* Full-width stat box (Withdrawn sits under the others) */
+    /* Full-width stat box (Cashed Out Balance sits under the others) */
     .stat-grid .stat-card.span-all { grid-column: 1 / -1; }
 
     /* Account dropdown */
@@ -350,17 +350,17 @@
         <div class="stat-value" id="statGrading">0</div>
         <div class="stat-label">Sent for Grading</div>
       </div>
-      <!-- Cashed out balance -->
+      <!-- Withdrawn box -->
       <div class="stat-card">
-        <div class="stat-value" id="statCashBalance" style="color:#10b981">£0.00</div>
-        <div class="stat-label">Cashed Out Balance</div>
-        <button type="button" class="btn-request-wd" id="btnOpenWithdraw">Request withdrawal</button>
-      </div>
-      <!-- Withdrawn box (under the others) -->
-      <div class="stat-card span-all">
         <button type="button" class="stat-plus cyan" id="btnOpenWithdrawnCards" aria-label="View withdrawn cards">+</button>
         <div class="stat-value" id="statWithdrawn">0</div>
         <div class="stat-label">Withdrawn</div>
+      </div>
+      <!-- Cashed out balance (under the others) -->
+      <div class="stat-card span-all">
+        <div class="stat-value" id="statCashBalance" style="color:#10b981">£0.00</div>
+        <div class="stat-label">Cashed Out Balance</div>
+        <button type="button" class="btn-request-wd" id="btnOpenWithdraw">Request withdrawal</button>
       </div>
     </div>
 
