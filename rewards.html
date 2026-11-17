@@ -61,6 +61,39 @@
     .timer.warn b { color: #f59e0b; }
     .timer.lost { color: #f87171; }
 
+    /* Check-in celebration */
+    #btnCheckin.ci-pop { animation: ciPop .6s ease; }
+    @keyframes ciPop {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(1.08); box-shadow: 0 0 34px rgba(139, 92, 246, .95); }
+      100% { transform: scale(1); }
+    }
+    .ci-spark {
+      position: fixed; z-index: 10000; width: 9px; height: 9px; border-radius: 50%;
+      background: #fde68a; box-shadow: 0 0 10px #c4b5fd; pointer-events: none;
+      animation: ciSpark .95s ease-out forwards;
+    }
+    @keyframes ciSpark {
+      from { transform: translate(0, 0) scale(1); opacity: 1; }
+      to   { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+    }
+    .points-pop {
+      position: fixed; top: 40%; left: 0; z-index: 10000;
+      padding: 10px 20px; border-radius: 999px;
+      background: linear-gradient(135deg, #8b5cf6, #c4b5fd);
+      color: #fff; font-weight: 800; font-size: 1.3rem;
+      box-shadow: 0 0 30px rgba(139, 92, 246, .7);
+      pointer-events: none; white-space: nowrap;
+      animation: pointsAcross 2.4s ease-in-out forwards;
+    }
+    @keyframes pointsAcross {
+      0%   { transform: translateX(-150%) translateY(0) scale(.8); opacity: 0; }
+      15%  { opacity: 1; }
+      50%  { transform: translateX(40vw) translateY(-30px) scale(1.15); opacity: 1; }
+      85%  { opacity: 1; }
+      100% { transform: translateX(110vw) translateY(-60px) scale(.9); opacity: 0; }
+    }
+
     .line { position: relative; height: 48px; margin: 6px 14px 14px; }
     .line-bar { position: absolute; left: 0; right: 0; top: 14px; height: 6px; background: #2a2f3d; border-radius: 3px; }
     .line-fill { height: 100%; width: 0; background: linear-gradient(90deg, #8b5cf6, #22d3ee); border-radius: 3px; transition: width .7s; }
@@ -142,11 +175,6 @@
   <nav class="navbar">
     <div class="nav-inner">
       <a href="index.html" class="logo">Kollect <span>Vault</span></a>
-      <button class="burger" id="burger" aria-label="Menu">☰</button>
-      <ul class="nav-menu" id="navMenu">
-        <li><a href="auth.html" id="authLink">Sign In</a></li>
-        <li><a href="index.html">Home</a></li>
-      </ul>
     </div>
   </nav>
 
@@ -320,6 +348,34 @@
     return true;
   }
 
+  // ===== CHECK-IN CELEBRATION: button pop + sparkles + "+X Vault Points" flying across the screen =====
+  function showPointsPop(n) {
+    var p = document.createElement('div');
+    p.className = 'points-pop';
+    p.textContent = '+' + n + ' Vault Points';
+    document.body.appendChild(p);
+    setTimeout(function () { if (p.parentNode) p.parentNode.removeChild(p); }, 2500);
+  }
+  function celebrate(n) {
+    var b = $('btnCheckin');
+    b.classList.remove('ci-pop');
+    void b.offsetWidth;
+    b.classList.add('ci-pop');
+
+    var r = b.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    for (var i = 0; i < 16; i++) {
+      var s = document.createElement('div'), a = (i / 16) * Math.PI * 2, d = 70 + Math.random() * 90;
+      s.className = 'ci-spark';
+      s.style.left = cx + 'px';
+      s.style.top = cy + 'px';
+      s.style.setProperty('--dx', Math.cos(a) * d + 'px');
+      s.style.setProperty('--dy', Math.sin(a) * d + 'px');
+      document.body.appendChild(s);
+      (function (el) { setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 1000); })(s);
+    }
+    showPointsPop(n);
+  }
+
   // ===== BADGE SYMBOLS =====
   var W = 'fill="#fff"', S = 'fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"';
   var GLYPH = {
@@ -358,6 +414,7 @@
       }
     });
   }
+  // Resolves true if the claim worked, false if it failed (so callers can animate on success)
   function claim(fn, okMsg) {
     var ref = db.collection('users').doc(user.uid);
     return db.runTransaction(function (tx) {
@@ -366,8 +423,11 @@
         if ((Number(d0.totalSpent) || 0) < UNLOCK_SPEND) throw new Error('LOCKED');
         return fn(tx, ref, d0);
       });
-    }).then(function (msg) { toast(msg || okMsg); })
-      .catch(function (e) { toast(e && e.message === 'DONE' ? 'Already claimed.' : e && e.message === 'LOCKED' ? 'Spend £' + UNLOCK_SPEND + ' on packs to unlock rewards.' : 'Could not claim: ' + (e && e.message ? e.message : e)); });
+    }).then(function (msg) { toast(msg || okMsg); return true; })
+      .catch(function (e) {
+        toast(e && e.message === 'DONE' ? 'Already claimed.' : e && e.message === 'LOCKED' ? 'Spend £' + UNLOCK_SPEND + ' on packs to unlock rewards.' : 'Could not claim: ' + (e && e.message ? e.message : e));
+        return false;
+      });
   }
 
   // ===== DAILY CHECK-IN (24h timer, streak must be consecutive, 30-day cycle) =====
@@ -433,14 +493,18 @@
 
   $('btnCheckin').addEventListener('click', function () {
     if (needLogin()) return;
+    var gained = 0;
     claim(function (tx, ref, d0) {
       var now = Date.now(), c = ciOf(d0);
       if (c.at && now - c.at < DAY) throw new Error('DONE');
       var streak = (c.at && now - c.at < 2 * DAY) ? c.streak + 1 : 1;
       var r = DAILY[(streak - 1) % CYCLE];
+      gained = r.pts;
       tx.set(ref, { checkin: { lastAt: now, streak: streak }, points: FV.increment(r.pts), pointsEarned: earnedOf(d0) + r.pts }, { merge: true });
       if (r.packs) addPacks(tx, r.packs, 'daily');
       return 'Day ' + (((streak - 1) % CYCLE) + 1) + ' claimed: +' + r.pts + ' points' + (r.packs ? ' + a free ' + packLabel(r.packs) + ' pack!' : '');
+    }).then(function (ok) {
+      if (ok) celebrate(gained);
     });
   });
 
