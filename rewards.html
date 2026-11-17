@@ -99,7 +99,7 @@
     .line-fill { height: 100%; width: 0; background: linear-gradient(90deg, #8b5cf6, #22d3ee); border-radius: 3px; transition: width .7s; }
     .node { --nc: #8b5cf6; position: absolute; top: 6px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: #0f1117; border: 2px solid #2a2f3d; cursor: pointer; }
     .node.on { background: var(--nc); border-color: #fff; box-shadow: 0 0 12px var(--nc); }
-    .node em { position: absolute; top: 26px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: .68rem; color: #9ca3af; }
+    .node em { position: absolute; top: 26px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: .68rem; color: #9ca3af; white-space: nowrap; }
 
     /* Milestone carousels */
     .car { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 16px 12%; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
@@ -136,8 +136,8 @@
       background: linear-gradient(160deg, var(--a), var(--b)); border-top: 6px solid rgba(255,255,255,.35); border-bottom: 6px solid rgba(255,255,255,.35);
       box-shadow: 0 6px 14px rgba(0,0,0,.5), 0 0 14px var(--a); }
     .mpw { text-align: center; font-size: .7rem; color: #cbd5e1; }
-    .t-bronze { --a: #c2713a; --b: #6b3416; } .t-silver { --a: #cbd5e1; --b: #4b5563; } .t-gold { --a: #f59e0b; --b: #92400e; }
-    .t-platinum { --a: #8b5cf6; --b: #4c1d95; } .t-diamond { --a: #38bdf8; --b: #0c4a6e; } .t-emerald { --a: #10b981; --b: #064e3b; }
+    .t-silver { --a: #cbd5e1; --b: #4b5563; } .t-gold { --a: #f59e0b; --b: #92400e; }
+    .t-platinum { --a: #8b5cf6; --b: #4c1d95; } .t-diamond { --a: #38bdf8; --b: #0c4a6e; }
 
     .qrow { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #2a2f3d; }
     .qrow:last-child { border-bottom: none; }
@@ -249,14 +249,14 @@
 
   <div class="container page-content">
     <h1 class="page-title">My Rewards</h1>
-    <p class="page-sub">Check in daily, buy packs to rank up, earn Vault Points and complete quests.</p>
+    <p class="page-sub">Check in daily, spend on packs to rank up, earn Vault Points and complete quests.</p>
     <div class="rw-lock" id="rwLock"></div>
     <p class="rw-sub" id="signin" style="display:none"><a href="auth.html" style="color:#c4b5fd;font-weight:700">Sign in</a> to track and claim your rewards.</p>
 
     <div class="rw-stats">
       <div class="rw-stat" style="--c:#6366f1;--t:#a5b4fc">
-        <small>Packs Bought</small>
-        <strong><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><span id="sPacks">0</span></strong>
+        <small>Total Spent</small>
+        <strong><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><span id="sSpent">£0</span></strong>
       </div>
       <div class="rw-stat" id="sRankBox">
         <small>Rank</small>
@@ -276,7 +276,7 @@
       <details class="rw-dd gated">
         <summary class="btn btn-primary btn-lg">Quests</summary>
         <div class="rw-dd-body">
-          <p class="rw-sub">Complete a quest once to earn a free Silver pack.</p>
+          <p class="rw-sub">Complete a quest once to earn bonus Vault Points.</p>
           <div class="rw-box" id="quests"></div>
         </div>
       </details>
@@ -284,7 +284,7 @@
       <details class="rw-dd gated">
         <summary class="btn btn-primary btn-lg">Spend Vault Points</summary>
         <div class="rw-dd-body">
-          <p class="rw-sub">Exchange points for a pack, added to My Free Packs.</p>
+          <p class="rw-sub">Exchange points for a pack, added to My Free Packs. Free packs are unlocked in line with what you have spent on packs.</p>
           <div class="rw-box" id="shop"></div>
         </div>
       </details>
@@ -307,7 +307,7 @@
     </section>
 
     <section class="rw-sec gated">
-      <h2>Pack Milestones</h2>
+      <h2>Rank Milestones</h2>
       <p class="rw-sub" id="pkNext"></p>
       <div class="line" id="pkLine"><div class="line-bar"><div class="line-fill" id="pkFill"></div></div></div>
       <div class="car" id="pkCar"></div>
@@ -380,44 +380,62 @@
   });
 
   // ============ EDIT THESE ============
-  // Pack milestones: at = total packs bought. ic = badge symbol.
+  //
+  // PROFIT SAFETY (read this first)
+  // Free packs only ever pull the CHEAPER HALF of a tier's range and never a grail (see buy.html).
+  // So a free pack costs you roughly this much (average of the cheap half of each tier):
+  //   Silver  £14  (pack price £29)    Gold  £29  (£50)    Platinum £58  (£100)    Diamond £144  (£250)
+  // FREE_COST must be updated if you change the tier min / max in buy.html.
+  //
+  // Three layers keep rewards below what the customer has spent:
+  //  1. Milestones are based on REAL MONEY SPENT (totalSpent), not cards owned, so raw cards,
+  //     free packs and points packs can't be farmed to rank up.
+  //  2. Check-in points are capped at CHECKIN_PTS_PER_POUND x total money spent.
+  //  3. A hard reward budget: the estimated cost of every free pack claimed (milestones, points
+  //     shop, leaderboard prizes) can never exceed FREE_BUDGET_PCT x total money spent.
+  var FREE_COST = { silver: 14, gold: 29, platinum: 58, diamond: 144 };
+  var FREE_BUDGET_PCT = 0.15;        // free packs may cost you at most 15% of what the customer spent
+  var CHECKIN_PTS_PER_POUND = 4;     // lifetime check-in points allowed per £1 spent on packs
+  var LB_BUDGET_PCT = 0.25;          // leaderboard prize cost must be <= 25% of the winner's total spend
+
+  // Rank milestones: at = TOTAL £ SPENT on packs. ic = badge symbol.
+  // Cumulative free-pack cost stays around 5-6% of spend at every step.
   var RECRUIT = { name: 'Recruit', ic: 'recruit', c: '#9ca3af', c2: '#4b5563' };
   var STAGES = [
-    { id: 'soldier',   name: 'Soldier',   at: 5,   ic: 'soldier',   c: '#9ca3af', c2: '#4b5563', rewards: [{ tier: 'silver', qty: 1 }] },
-    { id: 'knight',    name: 'Knight',    at: 10,  ic: 'knight',    c: '#e8a56b', c2: '#8a4a24', rewards: [{ tier: 'silver', qty: 1 }] },
-    { id: 'captain',   name: 'Captain',   at: 25,  ic: 'star',      c: '#e5e7eb', c2: '#6b7280', rewards: [{ tier: 'silver', qty: 1 }, { tier: 'gold', qty: 1 }] },
-    { id: 'commander', name: 'Commander', at: 50,  ic: 'crown',     c: '#fbbf24', c2: '#b45309', rewards: [{ tier: 'gold', qty: 2 }] },
-    { id: 'warlord',   name: 'Warlord',   at: 75,  ic: 'flame',     c: '#f87171', c2: '#991b1b', rewards: [{ tier: 'gold', qty: 2 }] },
-    { id: 'titan',     name: 'Titan',     at: 100, ic: 'mountain',  c: '#a78bfa', c2: '#4c1d95', rewards: [{ tier: 'gold', qty: 2 }, { tier: 'platinum', qty: 1 }] },
-    { id: 'omega',     name: 'Omega',     at: 500, ic: 'omega',     c: '#22d3ee', c2: '#0e7490', rewards: [{ tier: 'gold', qty: 1 }, { tier: 'platinum', qty: 1 }, { tier: 'diamond', qty: 2 }] }
+    { id: 'soldier',   name: 'Soldier',   at: 200,   ic: 'soldier',   c: '#9ca3af', c2: '#4b5563', rewards: [{ tier: 'silver', qty: 1 }] },
+    { id: 'knight',    name: 'Knight',    at: 500,   ic: 'knight',    c: '#e8a56b', c2: '#8a4a24', rewards: [{ tier: 'silver', qty: 1 }] },
+    { id: 'captain',   name: 'Captain',   at: 1000,  ic: 'star',      c: '#e5e7eb', c2: '#6b7280', rewards: [{ tier: 'gold', qty: 1 }] },
+    { id: 'commander', name: 'Commander', at: 2000,  ic: 'crown',     c: '#fbbf24', c2: '#b45309', rewards: [{ tier: 'gold', qty: 2 }] },
+    { id: 'warlord',   name: 'Warlord',   at: 3500,  ic: 'flame',     c: '#f87171', c2: '#991b1b', rewards: [{ tier: 'gold', qty: 2 }] },
+    { id: 'titan',     name: 'Titan',     at: 6000,  ic: 'mountain',  c: '#a78bfa', c2: '#4c1d95', rewards: [{ tier: 'platinum', qty: 2 }] },
+    { id: 'omega',     name: 'Omega',     at: 12000, ic: 'omega',     c: '#22d3ee', c2: '#0e7490', rewards: [{ tier: 'diamond', qty: 2 }] }
   ];
-  // Vault Points milestones: at = total points earned
+  // Vault Points milestones: at = total points earned.
+  // Points come from check-ins (capped by spend), quests and opening packs, so each reward
+  // needs several hundred £ of spend behind it.
   var POINT_STAGES = [
-    { id: 'p100',  name: '100 pts',   at: 100,  ic: 'coin',  c: '#f59e0b', c2: '#92400e', rewards: [{ tier: 'gold', qty: 1 }] },
-    { id: 'p300',  name: '300 pts',   at: 300,  ic: 'bolt',  c: '#fbbf24', c2: '#b45309', rewards: [{ tier: 'gold', qty: 2 }] },
-    { id: 'p500',  name: '500 pts',   at: 500,  ic: 'star',  c: '#a78bfa', c2: '#4c1d95', rewards: [{ tier: 'platinum', qty: 1 }] },
-    { id: 'p750',  name: '750 pts',   at: 750,  ic: 'crown', c: '#8b5cf6', c2: '#4c1d95', rewards: [{ tier: 'platinum', qty: 2 }] },
-    { id: 'p1000', name: '1000 pts',  at: 1000, ic: 'gem',   c: '#10b981', c2: '#064e3b', rewards: [{ tier: 'diamond', qty: 1 }] }
+    { id: 'p1000',  name: '1000 pts',  at: 1000,  ic: 'coin',  c: '#f59e0b', c2: '#92400e', rewards: [{ tier: 'silver', qty: 1 }] },
+    { id: 'p2500',  name: '2500 pts',  at: 2500,  ic: 'bolt',  c: '#fbbf24', c2: '#b45309', rewards: [{ tier: 'gold', qty: 1 }] },
+    { id: 'p5000',  name: '5000 pts',  at: 5000,  ic: 'star',  c: '#a78bfa', c2: '#4c1d95', rewards: [{ tier: 'platinum', qty: 1 }] },
+    { id: 'p10000', name: '10000 pts', at: 10000, ic: 'gem',   c: '#10b981', c2: '#064e3b', rewards: [{ tier: 'diamond', qty: 1 }] }
   ];
   // Points shop: cost = Vault Points. Keep these the same as POINTS_COST in buy.html.
   var SHOP = [
-    { tier: 'bronze', price: 10, cost: 1000 }, { tier: 'silver', price: 25, cost: 1500 }, { tier: 'gold', price: 50, cost: 2500 },
+    { tier: 'silver', price: 29, cost: 1500 }, { tier: 'gold', price: 50, cost: 2500 },
     { tier: 'platinum', price: 100, cost: 3500 }, { tier: 'diamond', price: 250, cost: 7500 }
   ];
-  // 30-day check-in cycle. Points repeat on a 7-day pattern; pack days are listed below.
-  // After day 30 the cycle starts again at Day 1.
+  // 30-day check-in cycle. Base points repeat on a 7-day pattern, plus bonus points on set days.
+  // Check-in only ever gives points (no free packs). After day 30 the cycle starts again at Day 1.
   var CYCLE = 30;
-  var WEEK_PTS = [10, 10, 15, 15, 20, 25, 50];
-  var DAILY_PACKS = {
-    7:  [{ tier: 'bronze', qty: 1 }],
-    14: [{ tier: 'bronze', qty: 1 }],
-    21: [{ tier: 'bronze', qty: 1 }],
-    30: [{ tier: 'bronze', qty: 1 }, { tier: 'gold', qty: 1 }]
-  };
+  var WEEK_PTS = [5, 5, 5, 5, 10, 10, 15];
+  var DAILY_BONUS = { 7: 25, 14: 25, 21: 40, 30: 100 };
   var DAILY = [];
-  for (var dn = 1; dn <= CYCLE; dn++) DAILY.push({ pts: WEEK_PTS[(dn - 1) % 7], packs: DAILY_PACKS[dn] || null });
-  // Quests: each gives QUEST_REWARD once. To add new quests later, just add a line here with a new unique id.
-  var QUEST_REWARD = { tier: 'silver', qty: 1 };
+  for (var dn = 1; dn <= CYCLE; dn++) {
+    var bonus = DAILY_BONUS[dn] || 0;
+    DAILY.push({ pts: WEEK_PTS[(dn - 1) % 7] + bonus, bonus: bonus > 0 });
+  }
+  // Quests: each gives QUEST_POINTS once. To add new quests later, just add a line here with a new unique id.
+  var QUEST_POINTS = 40;
   var QUESTS = [
     { id: 'instagram', icon: '📸', title: 'Follow us on Instagram', url: 'https://instagram.com/yourhandle' },
     { id: 'tiktok',    icon: '🎵', title: 'Follow us on TikTok',    url: 'https://tiktok.com/@yourhandle' },
@@ -431,16 +449,32 @@
   var UNLOCK_SPEND = 20;
 
   var DAY = 86400000;
-  var user = null, ud = {}, owned = 0, vouchers = [], started = {}, udLoaded = false;
+  var user = null, ud = {}, vouchers = [], started = {}, udLoaded = false;
   function spent() { return Number(ud.totalSpent) || 0; }
   var $ = function (id) { return document.getElementById(id); };
   var cap = function (s) { return s.charAt(0).toUpperCase() + s.slice(1); };
-  function packLabel(list) { return list.map(function (r) { return cap(r.tier); }).join(' + '); }
-  function packs() { return Math.max(Number(ud.packsBought) || 0, owned); }
   function pts() { return Number(ud.points) || 0; }
   function earnedOf(d) { return d.pointsEarned != null ? Number(d.pointsEarned) || 0 : Number(d.points) || 0; }
   function earned() { return earnedOf(ud); }
+  function gbp(n) { return '£' + Number(n).toLocaleString('en-GB', { minimumFractionDigits: (n % 1 ? 2 : 0), maximumFractionDigits: 2 }); }
   function rankFor(n) { var r = null; STAGES.forEach(function (s) { if (n >= s.at) r = s; }); return r; }
+
+  // Estimated cost to you of a list of free packs
+  function listCost(list) {
+    return list.reduce(function (t, r) { return t + (FREE_COST[r.tier] || 0) * r.qty; }, 0);
+  }
+  // Throws if this free-pack claim would push total free-pack cost over FREE_BUDGET_PCT of money spent.
+  // Returns the cost so the caller can record it in freeCostUsed.
+  function checkBudget(d0, list) {
+    var need = listCost(list);
+    var used = Number(d0.freeCostUsed) || 0;
+    var sp = Number(d0.totalSpent) || 0;
+    if (used + need > sp * FREE_BUDGET_PCT + 0.001) {
+      var more = Math.ceil((used + need) / FREE_BUDGET_PCT - sp);
+      throw new Error('BUDGET:' + more);
+    }
+    return need;
+  }
 
   var tt;
   function toast(msg) {
@@ -479,7 +513,7 @@
       document.body.appendChild(s);
       (function (el) { setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 1000); })(s);
     }
-    showPointsPop(n);
+    if (n > 0) showPointsPop(n);
   }
 
   // ===== BADGE SYMBOLS =====
@@ -531,17 +565,28 @@
       });
     }).then(function (msg) { toast(msg || okMsg); return true; })
       .catch(function (e) {
-        toast(e && e.message === 'DONE' ? 'Already claimed.' : e && e.message === 'LOCKED' ? 'Spend £' + UNLOCK_SPEND + ' on packs to unlock rewards.' : 'Could not claim: ' + (e && e.message ? e.message : e));
+        var m = e && e.message ? e.message : '';
+        toast(
+          m === 'DONE' ? 'Already claimed.' :
+          m === 'LOCKED' ? 'Spend £' + UNLOCK_SPEND + ' on packs to unlock rewards.' :
+          m.indexOf('BUDGET:') === 0 ? 'Spend about £' + m.split(':')[1] + ' more on packs to unlock this free pack.' :
+          'Could not claim: ' + (m || e)
+        );
         return false;
       });
   }
 
   // ===== DAILY CHECK-IN (24h timer, streak must be consecutive, 30-day cycle) =====
   // Check-in opens 24h after the last one. Miss the 48h window and the streak resets to Day 1.
+  // Check-in only gives Vault Points, and lifetime check-in points are capped by money spent.
   function ciOf(d0) {
     var c = d0.checkin || {};
     var at = c.lastAt || (c.lastDate ? new Date(c.lastDate + 'T00:00:00').getTime() : 0);
     return { at: at, streak: c.streak || 0 };
+  }
+  function ciLeft(d0) {
+    var capPts = (Number(d0.totalSpent) || 0) * CHECKIN_PTS_PER_POUND;
+    return Math.max(0, Math.floor(capPts - (Number(d0.checkinPts) || 0)));
   }
   function fmt(ms) {
     var s = Math.max(0, Math.floor(ms / 1000)), p = function (n) { return ('0' + n).slice(-2); };
@@ -569,8 +614,8 @@
       daySig = sig;
       var keep = dayCar.scrollLeft, h = '';
       DAILY.forEach(function (r, i) {
-        var cls = 'day' + (i < done ? ' done' : '') + (!claimedToday && i === done ? ' today' : '') + (r.packs ? ' big' : '');
-        h += '<div class="' + cls + '">Day ' + (i + 1) + '<b>+' + r.pts + '</b>' + (i < done ? '✓' : (r.packs ? '🎁 ' + packLabel(r.packs) : 'pts')) + '</div>';
+        var cls = 'day' + (i < done ? ' done' : '') + (!claimedToday && i === done ? ' today' : '') + (r.bonus ? ' big' : '');
+        h += '<div class="' + cls + '">Day ' + (i + 1) + '<b>+' + r.pts + '</b>' + (i < done ? '✓' : (r.bonus ? '🎁 Bonus' : 'pts')) + '</div>';
       });
       dayCar.innerHTML = h;
       var target = claimedToday ? done - 1 : done;
@@ -578,7 +623,7 @@
       else dayCar.scrollLeft = keep;
     }
 
-    $('streakTxt').textContent = '🔥 Current streak: ' + live + ' day' + (live === 1 ? '' : 's') + '. Check in every day. Free Bronze pack on Days 7, 14 and 21, and Bronze + Gold on Day 30.';
+    $('streakTxt').textContent = '🔥 Current streak: ' + live + ' day' + (live === 1 ? '' : 's') + '. Check in every day. Bonus points on Days 7, 14, 21 and 30. Check-in points grow with what you spend on packs (' + ciLeft(ud).toLocaleString() + ' available now).';
     var tm = $('timer'), b = $('btnCheckin');
     tm.className = 'timer';
     if (claimedToday) {
@@ -605,10 +650,18 @@
       if (c.at && now - c.at < DAY) throw new Error('DONE');
       var streak = (c.at && now - c.at < 2 * DAY) ? c.streak + 1 : 1;
       var r = DAILY[(streak - 1) % CYCLE];
-      gained = r.pts;
-      tx.set(ref, { checkin: { lastAt: now, streak: streak }, points: FV.increment(r.pts), pointsEarned: earnedOf(d0) + r.pts }, { merge: true });
-      if (r.packs) addPacks(tx, r.packs, 'daily');
-      return 'Day ' + (((streak - 1) % CYCLE) + 1) + ' claimed: +' + r.pts + ' points' + (r.packs ? ' + a free ' + packLabel(r.packs) + ' pack!' : '');
+      // Points are capped by money spent; the streak still advances either way
+      var give = Math.min(r.pts, ciLeft(d0));
+      gained = give;
+      tx.set(ref, {
+        checkin: { lastAt: now, streak: streak },
+        points: FV.increment(give),
+        pointsEarned: earnedOf(d0) + give,
+        checkinPts: (Number(d0.checkinPts) || 0) + give
+      }, { merge: true });
+      var dayNo = ((streak - 1) % CYCLE) + 1;
+      if (give <= 0) return 'Day ' + dayNo + ' checked in. Spend more on packs to earn check-in points.';
+      return 'Day ' + dayNo + ' claimed: +' + give + ' points' + (give < r.pts ? ' (spend more on packs for the full amount)' : '');
     }).then(function (ok) {
       if (ok) celebrate(gained);
     });
@@ -627,19 +680,24 @@
     card.style.setProperty('--c', s.c);
     card.style.setProperty('--c2', s.c2);
     card.innerHTML = badge(s, 84) + '<h3>' + s.name + '</h3>' +
-      '<p>' + (T.unit === 'pack' ? s.at + ' packs bought' : s.at + ' Vault Points earned') + '</p>' +
+      '<p>' + (T.key === 'pk' ? gbp(s.at) + ' spent on packs' : s.at.toLocaleString() + ' Vault Points earned') + '</p>' +
       '<div class="rw-packs">' + s.rewards.map(miniPack).join('') + '</div>' +
-      (left > 0 ? '<div class="need">' + plural(left, T.unit) + ' to unlock</div>' : '') +
+      (left > 0 ? '<div class="need">' + T.more(left) + ' to unlock</div>' : '') +
       '<button class="btn btn-secondary w-full" data-close="1">Close</button>';
     modal.style.display = 'flex';
   }
 
-  // ===== MILESTONE TRACKS (packs + points share the same code) =====
+  // ===== MILESTONE TRACKS (spend + points share the same code) =====
   var TRACKS = [
-    { key: 'pk', stages: STAGES,       val: packs, field: 'claimedMilestones',      src: 'milestone:', unit: 'pack',  label: 'Rank ',   doneTxt: 'You reached the top rank. Legend.', nextLbl: 'Next rank: ' },
-    { key: 'pt', stages: POINT_STAGES, val: earned,   field: 'claimedPointMilestones', src: 'points:',    unit: 'point', label: 'Reward ', doneTxt: 'You claimed every Vault Points reward.', nextLbl: 'Next reward: ' }
+    { key: 'pk', stages: STAGES, val: spent, field: 'claimedMilestones', src: 'milestone:', label: 'Rank ', doneTxt: 'You reached the top rank. Legend.', nextLbl: 'Next rank: ',
+      more: function (n) { return gbp(Math.ceil(n)) + ' more spend'; },
+      desc: function (s) { return gbp(s.at) + ' spent'; },
+      short: function (n) { return n >= 1000 ? '£' + (n / 1000) + 'k' : '£' + n; } },
+    { key: 'pt', stages: POINT_STAGES, val: earned, field: 'claimedPointMilestones', src: 'points:', label: 'Reward ', doneTxt: 'You claimed every Vault Points reward.', nextLbl: 'Next reward: ',
+      more: function (n) { return Math.ceil(n).toLocaleString() + ' more point' + (Math.ceil(n) === 1 ? '' : 's'); },
+      desc: function (s) { return s.at.toLocaleString() + ' Vault Points'; },
+      short: function (n) { return n >= 1000 ? (n / 1000) + 'k' : String(n); } }
   ];
-  function plural(n, u) { return n + ' more ' + u + (n === 1 ? '' : 's'); }
   function centerCard(T, i, smooth) {
     var car = $(T.key + 'Car'), c = car.children[i];
     if (c) car.scrollTo({ left: c.offsetLeft - (car.clientWidth - c.offsetWidth) / 2, behavior: smooth ? 'smooth' : 'auto' });
@@ -656,7 +714,7 @@
       n.className = 'node'; n.id = 'node-' + T.key + s.id;
       n.style.left = ((i + 1) / T.stages.length * 100) + '%';
       n.style.setProperty('--nc', s.c);
-      n.innerHTML = '<em>' + s.at + '</em>';
+      n.innerHTML = '<em>' + T.short(s.at) + '</em>';
       n.addEventListener('click', function () { centerCard(T, i, true); });
       $(T.key + 'Line').appendChild(n);
     });
@@ -667,10 +725,12 @@
         var s = T.stages.filter(function (x) { return x.id === id; })[0];
         claim(function (tx, ref, d0) {
           if ((d0[T.field] || []).indexOf(id) > -1) throw new Error('DONE');
-          var cur = T.key === 'pt' ? earnedOf(d0) : T.val();
+          var cur = T.key === 'pt' ? earnedOf(d0) : (Number(d0.totalSpent) || 0);
           if (cur < s.at) throw new Error('Not unlocked yet');
+          var need = checkBudget(d0, s.rewards);   // free-pack budget check
           addPacks(tx, s.rewards, T.src + id);
-          var upd = {}; upd[T.field] = FV.arrayUnion(id);
+          var upd = { freeCostUsed: FV.increment(need) };
+          upd[T.field] = FV.arrayUnion(id);
           tx.set(ref, upd, { merge: true });
           return s.name + ' reward claimed! Find it in My Free Packs.';
         });
@@ -689,17 +749,17 @@
       var locked = p < s.at, claimed = cl.indexOf(s.id) > -1;
       var foot = locked ? '' : (claimed ? '<div class="done-tag">✓ Claimed</div>' : '<button class="btn btn-primary w-full" data-claim="' + s.id + '">Claim Reward</button>');
       h += '<div class="st' + (locked ? ' locked' : '') + (claimed ? ' claimed' : '') + (i === cur ? ' cur' : '') + '" data-id="' + s.id + '" style="--c:' + s.c + ';--c2:' + s.c2 + '">' +
-        '<div class="st-top"><div class="st-lab">' + T.label + (i + 1) + '</div>' + badge(s, 84) + '<h3>' + s.name + '</h3><p>' + (T.unit === 'pack' ? s.at + ' packs bought' : s.at + ' Vault Points') + '</p></div>' +
+        '<div class="st-top"><div class="st-lab">' + T.label + (i + 1) + '</div>' + badge(s, 84) + '<h3>' + s.name + '</h3><p>' + T.desc(s) + '</p></div>' +
         '<div class="st-rw"><div class="rw-packs">' + s.rewards.map(miniPack).join('') + '</div>' + foot +
         '<div class="lock"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>' +
-        plural(s.at - p, T.unit) + '<span class="lk-tap">Tap to view rewards</span></div></div></div>';
+        T.more(s.at - p) + '<span class="lk-tap">Tap to view rewards</span></div></div></div>';
     });
     var car = $(T.key + 'Car'), keep = car.scrollLeft;
     car.innerHTML = h;
     $(T.key + 'Fill').style.width = fillPct(T, p) + '%';
     T.stages.forEach(function (s) { $('node-' + T.key + s.id).classList.toggle('on', p >= s.at); });
     var nx = null; T.stages.forEach(function (s) { if (!nx && p < s.at) nx = s; });
-    $(T.key + 'Next').textContent = nx ? T.nextLbl + nx.name + ' — ' + plural(nx.at - p, T.unit) + '.' : T.doneTxt;
+    $(T.key + 'Next').textContent = nx ? T.nextLbl + nx.name + ' — ' + T.more(nx.at - p) + '.' : T.doneTxt;
     if (!T.scrolled) { T.scrolled = true; requestAnimationFrame(function () { centerCard(T, cur, false); }); }
     else car.scrollLeft = keep;
   }
@@ -716,7 +776,7 @@
         else if (started[q.id]) btn = '<button class="btn btn-secondary" disabled>Checking...</button>';
         else btn = '<button class="btn btn-secondary" data-q="go:' + q.id + '">' + (q.share ? 'Share' : 'Follow') + '</button>';
       }
-      h += '<div class="qrow"><div class="qicon">' + q.icon + '</div><div class="qtxt">' + q.title + '<small>Reward: 1 ' + cap(QUEST_REWARD.tier) + ' pack</small></div>' + btn + '</div>';
+      h += '<div class="qrow"><div class="qicon">' + q.icon + '</div><div class="qtxt">' + q.title + '<small>Reward: ' + QUEST_POINTS + ' Vault Points</small></div>' + btn + '</div>';
     });
     if (!left) h += '<p class="qsoon">All quests complete. New quests are coming soon!</p>';
     $('quests').innerHTML = h;
@@ -739,21 +799,29 @@
     } else {
       claim(function (tx, ref, d0) {
         if ((d0.claimedQuests || []).indexOf(q.id) > -1) throw new Error('DONE');
-        addPacks(tx, [QUEST_REWARD], 'quest:' + q.id);
-        tx.set(ref, { claimedQuests: FV.arrayUnion(q.id) }, { merge: true });
-        return 'Quest complete! Free ' + cap(QUEST_REWARD.tier) + ' pack added to My Free Packs.';
+        tx.set(ref, {
+          claimedQuests: FV.arrayUnion(q.id),
+          points: FV.increment(QUEST_POINTS),
+          pointsEarned: earnedOf(d0) + QUEST_POINTS
+        }, { merge: true });
+        return 'Quest complete! +' + QUEST_POINTS + ' Vault Points.';
       });
     }
   });
 
   // ===== MY FREE PACKS (each links to the matching tier on buy.html) =====
   function renderFree() {
-    var first = {}, counts = {}, order = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'emerald'];
-    vouchers.forEach(function (v) { counts[v.tier] = (counts[v.tier] || 0) + 1; if (!first[v.tier]) first[v.tier] = v.id; });
+    var first = {}, counts = {}, order = ['silver', 'gold', 'platinum', 'diamond'];
+    vouchers.forEach(function (v) {
+      // Bronze packs no longer exist: any old Bronze voucher is shown (and opened) as Silver
+      var t = v.tier === 'bronze' ? 'silver' : v.tier;
+      counts[t] = (counts[t] || 0) + 1;
+      if (!first[t]) first[t] = v.id;
+    });
     var h = order.filter(function (t) { return counts[t]; }).map(function (t) {
       return '<a class="fp t-' + t + '" href="buy.html?tier=' + t + '&voucher=' + first[t] + '">' + miniPack({ tier: t, qty: counts[t] }) + '<span class="go">Open pack</span></a>';
     }).join('');
-    $('free').innerHTML = h ? '<div class="free-row">' + h + '</div>' : '<p class="rw-sub" style="margin:0">No free packs yet. Check in, rank up or finish a quest!</p>';
+    $('free').innerHTML = h ? '<div class="free-row">' + h + '</div>' : '<p class="rw-sub" style="margin:0">No free packs yet. Rank up or exchange Vault Points!</p>';
     $('sFree').textContent = vouchers.length;
   }
 
@@ -780,16 +848,22 @@
           rows.forEach(function (r0, idx) { if (r0.id === uid) rank = idx; });
           var ref = db.collection('users').doc(uid);
           if (rank < 0 || rank > 2) return ref.set({ lbChecked: FV.arrayUnion(key) }, { merge: true });
+          var prize = [{ tier: LB_PRIZES[rank], qty: 1 }];
           return db.runTransaction(function (tx) {
             return tx.get(ref).then(function (s) {
               var d0 = s.exists ? s.data() : {};
-              if ((d0.lbChecked || []).indexOf(key) > -1) return false;
-              addPacks(tx, [{ tier: LB_PRIZES[rank], qty: 1 }], 'leaderboard:' + key);
+              if ((d0.lbChecked || []).indexOf(key) > -1) return { status: 'done' };
+              // The prize must stay well below what this player has spent in total.
+              // If not, it is left unclaimed (not marked as checked) so they can still claim it later.
+              var sp = Number(d0.totalSpent) || 0, pc = listCost(prize);
+              if (pc > sp * LB_BUDGET_PCT + 0.001) return { status: 'short', more: Math.ceil(pc / LB_BUDGET_PCT - sp) };
+              addPacks(tx, prize, 'leaderboard:' + key);
               tx.set(ref, { lbChecked: FV.arrayUnion(key) }, { merge: true });
-              return true;
+              return { status: 'won' };
             });
-          }).then(function (won) {
-            if (won) toast('🏆 You finished ' + LB_PLACES[rank] + ' on the ' + key + ' leaderboard! A free ' + cap(LB_PRIZES[rank]) + ' pack was added to My Free Packs.');
+          }).then(function (res) {
+            if (res.status === 'won') toast('🏆 You finished ' + LB_PLACES[rank] + ' on the ' + key + ' leaderboard! A free ' + cap(LB_PRIZES[rank]) + ' pack was added to My Free Packs.');
+            else if (res.status === 'short') toast('🏆 You finished ' + LB_PLACES[rank] + ' on the ' + key + ' leaderboard! Spend about £' + res.more + ' more on packs to claim your ' + cap(LB_PRIZES[rank]) + ' pack prize.');
           });
         });
       });
@@ -814,7 +888,8 @@
     var i = SHOP.filter(function (x) { return x.tier === t; })[0], c = cost(i);
     claim(function (tx, ref, d0) {
       if ((Number(d0.points) || 0) < c) throw new Error('Not enough Vault Points');
-      tx.set(ref, { points: FV.increment(-c) }, { merge: true });
+      var need = checkBudget(d0, [{ tier: t, qty: 1 }]);   // free-pack budget check
+      tx.set(ref, { points: FV.increment(-c), freeCostUsed: FV.increment(need) }, { merge: true });
       addPacks(tx, [{ tier: t, qty: 1 }], 'shop');
       return cap(t) + ' pack bought for ' + c.toLocaleString() + ' points. Find it in My Free Packs.';
     });
@@ -822,8 +897,8 @@
 
   // ===== RENDER ALL =====
   function renderAll() {
-    var r = rankFor(packs()), rk = r || RECRUIT;
-    $('sPacks').textContent = packs();
+    var sp = spent(), r = rankFor(sp), rk = r || RECRUIT;
+    $('sSpent').textContent = gbp(Math.floor(sp));
     $('sRank').textContent = rk.name;
     $('sRankIc').innerHTML = badge(rk, 30);
     var rb = $('sRankBox');
@@ -831,12 +906,12 @@
     rb.style.setProperty('--t', rk.c);
     $('sPts').textContent = pts();
     $('signin').style.display = user ? 'none' : 'block';
-    var locked = !!user && udLoaded && spent() < UNLOCK_SPEND, lk = $('rwLock');
+    var locked = !!user && udLoaded && sp < UNLOCK_SPEND, lk = $('rwLock');
     if (locked) {
       lk.style.display = 'block';
       lk.innerHTML = '🔒 Rewards unlock once you have spent £' + UNLOCK_SPEND + ' on packs.' +
-        '<div class="lk-bar"><div style="width:' + Math.min(100, spent() / UNLOCK_SPEND * 100) + '%"></div></div>' +
-        '£' + spent().toFixed(2) + ' of £' + UNLOCK_SPEND + ' spent. <a href="buy.html">Buy a pack</a>';
+        '<div class="lk-bar"><div style="width:' + Math.min(100, sp / UNLOCK_SPEND * 100) + '%"></div></div>' +
+        '£' + sp.toFixed(2) + ' of £' + UNLOCK_SPEND + ' spent. <a href="buy.html">Buy a pack</a>';
     } else lk.style.display = 'none';
     Array.prototype.forEach.call(document.querySelectorAll('.gated'), function (s) { s.classList.toggle('rw-locked-sec', locked); });
     renderDaily(); TRACKS.forEach(renderTrack); renderQuests(); renderFree(); renderShop();
@@ -847,10 +922,9 @@
 
   auth.onAuthStateChanged(function (u) {
     user = u;
-    if (!u) { ud = {}; owned = 0; vouchers = []; grantRan = false; udLoaded = false; renderAll(); return; }
+    if (!u) { ud = {}; vouchers = []; grantRan = false; udLoaded = false; renderAll(); return; }
     var ref = db.collection('users').doc(u.uid);
     ref.onSnapshot(function (s) { ud = s.exists ? s.data() : {}; udLoaded = true; renderAll(); grantMonthly(); });
-    ref.collection('collection').get().then(function (s) { owned = s.size; renderAll(); }).catch(function () {});
     ref.collection('rewardPacks').where('status', '==', 'unused').onSnapshot(function (s) {
       vouchers = []; s.forEach(function (d) { var x = d.data(); x.id = d.id; vouchers.push(x); }); renderFree();
     });
