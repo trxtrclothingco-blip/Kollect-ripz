@@ -8,6 +8,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
   <style>
+    /* Dashboard button */
+    .top-actions { display: flex; justify-content: center; margin: 0 0 20px; }
+    .top-actions .btn { width: 100%; max-width: 420px; text-align: center; }
+
     /* Payment + Reveal overlays */
     .overlay {
       position: fixed;
@@ -233,7 +237,7 @@
     .pts-balance { margin: 0 0 14px; color: #c4b5fd; font-weight: 700; font-size: 0.92rem; text-align: center; min-height: 1.2em; }
     .pts-btn { margin-top: 10px; }
 
-    /* ===== CATEGORY SELECTOR ===== */
+    /* ===== CATEGORY SELECTOR (uses the normal button colours) ===== */
     .cat-tabs {
       display: flex;
       gap: 8px;
@@ -241,23 +245,10 @@
     }
     .cat-tab {
       flex: 1 1 0;
-      padding: 12px 16px;
-      border-radius: 999px;
-      border: 1px solid #2a2f3d;
-      background: #0f1117;
-      color: #9ca3af;
-      font: inherit;
-      font-size: 0.95rem;
-      font-weight: 700;
-      cursor: pointer;
       white-space: nowrap;
+      text-align: center;
     }
-    .cat-tab.active {
-      color: #f0f2f5;
-      background: #1a1d27;
-      border-color: #8b5cf6;
-      box-shadow: 0 0 0 1px #8b5cf6 inset;
-    }
+    .cat-tab:not(.active) { opacity: 0.55; }
 
     /* Free pack banner */
     .free-banner {
@@ -274,7 +265,7 @@
     }
 
     /* ===== MONTHLY LEADERBOARD ===== */
-    .lb-card { margin-top: 28px; background: #1a1d27; border: 1px solid #2a2f3d; border-radius: 16px; padding: 18px; }
+    .lb-card { margin: 0 0 28px; background: #1a1d27; border: 1px solid #2a2f3d; border-radius: 16px; padding: 18px; }
     .lb-card h2 { font-size: 1.25rem; margin-bottom: 4px; }
     .lb-timer { text-align: center; margin: 12px 0; padding: 10px; border-radius: 12px; background: #0f1117; border: 1px solid #2a2f3d; color: #9ca3af; font-size: .85rem; }
     .lb-timer b { display: block; font-size: 1.35rem; color: #f0f2f5; font-variant-numeric: tabular-nums; }
@@ -291,14 +282,18 @@
     .lb-pk { font-weight: 800; }
     .lb-me { color: #c4b5fd; font-weight: 600; font-size: .88rem; text-align: center; margin-top: 12px; }
     .lb-empty { color: #6b7280; font-size: .9rem; margin: 0; }
+    .lb-more { display: none; margin-top: 6px; border-top: 1px solid #2a2f3d; }
+    .lb-more summary { cursor: pointer; text-align: center; padding: 12px 8px 8px; color: #c4b5fd; font-weight: 700; font-size: .9rem; }
 
     /* ===== GRADED TIERS ===== */
 
-    /* Pack carousel (replaces the clickable tier tabs) */
+    /* Pack carousel: left / right only, never up or down */
     .pack-carousel {
       position: relative;
       display: flex;
       overflow-x: auto;
+      overflow-y: hidden;
+      overscroll-behavior-x: contain;
       scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
@@ -387,13 +382,36 @@
     <h1 class="page-title">Buy a Mystery Pack</h1>
     <p class="page-sub">Pick a category and a tier. One graded Grade 9 or Grade 10 card from that tier's value range, or a raw card. Instant reveal.</p>
 
+    <!-- DASHBOARD BUTTON -->
+    <div class="top-actions">
+      <a href="dashboard.html" class="btn btn-primary">Go to Your Dashboard</a>
+    </div>
+
+    <!-- MONTHLY LEADERBOARD -->
+    <section class="lb-card">
+      <h2 id="lbTitle">Monthly Leaderboard</h2>
+      <p class="text-dim" style="font-size:.85rem;margin:0">Most packs opened this month wins. Prizes are added to My Free Packs on the Rewards page.</p>
+      <div class="lb-timer">Resets in<b id="lbTimer">--</b></div>
+      <div class="lb-prizes">
+        <div class="lb-prize diamond">🥇 1st<strong>Diamond pack</strong></div>
+        <div class="lb-prize gold">🥈 2nd<strong>Gold pack</strong></div>
+        <div class="lb-prize gold">🥉 3rd<strong>Gold pack</strong></div>
+      </div>
+      <div id="lbBoard"><p class="lb-empty">Loading leaderboard...</p></div>
+      <details class="lb-more" id="lbMoreWrap">
+        <summary id="lbMoreSummary">Show more</summary>
+        <div id="lbMore"></div>
+      </details>
+      <p class="lb-me" id="lbMe"></p>
+    </section>
+
     <div class="free-banner" id="freeBanner"></div>
     <p class="pts-balance" id="ptsBalance"></p>
 
     <!-- Category selector -->
     <div class="cat-tabs" id="catTabs">
-      <button type="button" class="cat-tab active" data-cat="pokemon">Pokemon</button>
-      <button type="button" class="cat-tab" data-cat="football">Football</button>
+      <button type="button" class="btn btn-primary cat-tab active" data-cat="pokemon">Pokemon</button>
+      <button type="button" class="btn btn-primary cat-tab" data-cat="football">Football</button>
     </div>
 
     <div class="grid-2" style="align-items:start">
@@ -561,20 +579,6 @@
         </div>
       </div>
     </div>
-
-    <!-- MONTHLY LEADERBOARD -->
-    <section class="lb-card">
-      <h2 id="lbTitle">Monthly Leaderboard</h2>
-      <p class="text-dim" style="font-size:.85rem;margin:0">Most packs opened this month wins. Prizes are added to My Free Packs on the Rewards page.</p>
-      <div class="lb-timer">Resets in<b id="lbTimer">--</b></div>
-      <div class="lb-prizes">
-        <div class="lb-prize diamond">🥇 1st<strong>Diamond pack</strong></div>
-        <div class="lb-prize gold">🥈 2nd<strong>Gold pack</strong></div>
-        <div class="lb-prize gold">🥉 3rd<strong>Gold pack</strong></div>
-      </div>
-      <div id="lbBoard"><p class="lb-empty">Loading leaderboard...</p></div>
-      <p class="lb-me" id="lbMe"></p>
-    </section>
   </div>
 
   <footer>
@@ -898,6 +902,9 @@
     });
 
     carouselEl.addEventListener('scroll', function () {
+      // Never allow vertical movement inside the carousel
+      if (carouselEl.scrollTop) carouselEl.scrollTop = 0;
+
       var center = carouselEl.scrollLeft + carouselEl.clientWidth / 2;
       var best = null, bestDist = Infinity;
       Array.prototype.forEach.call(carouselEl.children, function (s) {
@@ -919,6 +926,7 @@
     if (!s) return;
     carouselEl.scrollTo({
       left: s.offsetLeft - (carouselEl.clientWidth - s.offsetWidth) / 2,
+      top: 0,
       behavior: smooth ? 'smooth' : 'auto'
     });
   }
@@ -1212,7 +1220,11 @@
     }
 
     busy = true;
-    try { packEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+    // Scroll the page (not the carousel) so the packs never shift up or down
+    try {
+      var scrollTarget = packEl.closest('.pack-carousel') || packEl;
+      scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (e) {}
     packEl.classList.add('shake');
 
     setTimeout(function () {
@@ -1327,21 +1339,44 @@
     var s = Math.max(0, Math.floor(ms / 1000));
     return Math.floor(s / 86400) + 'd ' + pad2(Math.floor(s % 86400 / 3600)) + ':' + pad2(Math.floor(s % 3600 / 60)) + ':' + pad2(s % 60);
   }
+  var MEDALS = ['🥇', '🥈', '🥉'];
+  function boardRowHtml(r, i, uid) {
+    return '<div class="lb-row' + (uid && r.id === uid ? ' me' : '') + '"><div class="lb-rk">' + (MEDALS[i] || (i + 1)) + '</div>' +
+      '<div class="lb-nm">' + escH(r.name || 'Collector') + (uid && r.id === uid ? ' (you)' : '') + '</div>' +
+      '<div class="lb-pk">' + r.packs + '</div></div>';
+  }
   function renderBoard() {
     var title = document.getElementById('lbTitle');
     if (!title) return;
     title.textContent = new Date().toLocaleString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }) + ' Leaderboard';
     var uid = (currentUser || auth.currentUser || {}).uid;
     var box = document.getElementById('lbBoard');
+    var moreWrap = document.getElementById('lbMoreWrap');
+    var moreBox = document.getElementById('lbMore');
+    var moreSummary = document.getElementById('lbMoreSummary');
+
     if (!boardRows.length) {
       box.innerHTML = '<p class="lb-empty">No packs opened yet this month. Be the first!</p>';
+      moreWrap.style.display = 'none';
+      moreBox.innerHTML = '';
     } else {
-      var medals = ['🥇', '🥈', '🥉'];
-      box.innerHTML = boardRows.map(function (r, i) {
-        return '<div class="lb-row' + (uid && r.id === uid ? ' me' : '') + '"><div class="lb-rk">' + (medals[i] || (i + 1)) + '</div>' +
-          '<div class="lb-nm">' + escH(r.name || 'Collector') + (uid && r.id === uid ? ' (you)' : '') + '</div>' +
-          '<div class="lb-pk">' + r.packs + '</div></div>';
+      // Top 3 always visible
+      box.innerHTML = boardRows.slice(0, 3).map(function (r, i) {
+        return boardRowHtml(r, i, uid);
       }).join('');
+
+      // Everyone else goes in the dropdown
+      var rest = boardRows.slice(3);
+      if (rest.length) {
+        moreBox.innerHTML = rest.map(function (r, i) {
+          return boardRowHtml(r, i + 3, uid);
+        }).join('');
+        moreSummary.textContent = 'Show ranks 4–' + (3 + rest.length);
+        moreWrap.style.display = 'block';
+      } else {
+        moreWrap.style.display = 'none';
+        moreBox.innerHTML = '';
+      }
     }
     document.getElementById('lbMe').textContent = uid ? 'Your packs opened this month: ' + myPacks : '';
   }
