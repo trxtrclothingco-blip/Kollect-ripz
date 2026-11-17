@@ -95,6 +95,10 @@
     .stat-plus:hover { background: #8b5cf6; }
     .stat-plus.cyan { border-color: #22d3ee; background: rgba(34,211,238,.18); }
     .stat-plus.cyan:hover { background: #22d3ee; }
+    .stat-plus.amber { border-color: #f59e0b; background: rgba(245,158,11,.18); }
+    .stat-plus.amber:hover { background: #f59e0b; }
+    /* Full-width stat box (Withdrawn sits under the others) */
+    .stat-grid .stat-card.span-all { grid-column: 1 / -1; }
 
     /* Account dropdown */
     .acct-dropdown summary {
@@ -137,6 +141,12 @@
     .wdr-modal.wd-modal.mode-withdrawn {
       --c: #22d3ee;
       --g1: rgba(34,211,238,.20);
+      --g2: rgba(139,92,246,.10);
+    }
+    /* Sent for grading = amber */
+    .wdr-modal.wd-modal.mode-grading {
+      --c: #f59e0b;
+      --g1: rgba(245,158,11,.20);
       --g2: rgba(139,92,246,.10);
     }
     .wd-modal h3 { margin: 0 0 12px; padding: 0 28px; }
@@ -334,17 +344,23 @@
         <div class="stat-value" id="statConsigned">0</div>
         <div class="stat-label">Consigned</div>
       </div>
-      <!-- Withdrawn box -->
+      <!-- Sent for grading box -->
       <div class="stat-card">
-        <button type="button" class="stat-plus cyan" id="btnOpenWithdrawnCards" aria-label="View withdrawn cards">+</button>
-        <div class="stat-value" id="statWithdrawn">0</div>
-        <div class="stat-label">Withdrawn</div>
+        <button type="button" class="stat-plus amber" id="btnOpenGrading" aria-label="View cards sent for grading">+</button>
+        <div class="stat-value" id="statGrading">0</div>
+        <div class="stat-label">Sent for Grading</div>
       </div>
       <!-- Cashed out balance -->
       <div class="stat-card">
         <div class="stat-value" id="statCashBalance" style="color:#10b981">£0.00</div>
         <div class="stat-label">Cashed Out Balance</div>
         <button type="button" class="btn-request-wd" id="btnOpenWithdraw">Request withdrawal</button>
+      </div>
+      <!-- Withdrawn box (under the others) -->
+      <div class="stat-card span-all">
+        <button type="button" class="stat-plus cyan" id="btnOpenWithdrawnCards" aria-label="View withdrawn cards">+</button>
+        <div class="stat-value" id="statWithdrawn">0</div>
+        <div class="stat-label">Withdrawn</div>
       </div>
     </div>
 
@@ -497,6 +513,7 @@
   var currentCashBalance = 0; // used by withdrawal request
   var withdrawnList = [];
   var consignedList = [];
+  var gradingList = [];
   var currentMode = 'withdrawn';
 
   function money(n) {
@@ -525,7 +542,7 @@
   }
 
   function formatWhen(c) {
-    var ts = c.withdrawnAt || c.consignedAt;
+    var ts = c.withdrawnAt || c.consignedAt || c.gradingAt;
     if (ts && ts.toDate) {
       return ts.toDate().toLocaleDateString('en-GB', {
         day: 'numeric', month: 'short', year: 'numeric'
@@ -574,8 +591,8 @@
 
     // Newest first
     list.sort(function (a, b) {
-      var ta = (a.withdrawnAt || a.consignedAt);
-      var tb = (b.withdrawnAt || b.consignedAt);
+      var ta = (a.withdrawnAt || a.consignedAt || a.gradingAt);
+      var tb = (b.withdrawnAt || b.consignedAt || b.gradingAt);
       ta = ta && ta.toMillis ? ta.toMillis() : Date.now();
       tb = tb && tb.toMillis ? tb.toMillis() : Date.now();
       return tb - ta;
@@ -589,7 +606,10 @@
       if (c.serial) rows.push(['Serial', escapeHtml(c.serial)]);
       rows.push(['Market value', money(c.market)]);
       rows.push(['Locked buyback', money(c.buyback)]);
-      if (when) rows.push([currentMode === 'consigned' ? 'Consigned' : 'Withdrawn', escapeHtml(when)]);
+      if (when) rows.push([
+        currentMode === 'consigned' ? 'Consigned' : (currentMode === 'grading' ? 'Sent for grading' : 'Withdrawn'),
+        escapeHtml(when)
+      ]);
 
       return '<div class="wd-slide">' +
         '<img src="' + escapeHtml(c.imageUrl) + '" alt="' + escapeHtml(c.name) + '" loading="lazy" />' +
@@ -606,17 +626,22 @@
   }
 
   function refreshCarousel() {
-    var isConsigned = currentMode === 'consigned';
-    renderCarousel(
-      isConsigned ? consignedList : withdrawnList,
-      isConsigned ? 'No consigned cards yet.' : 'No withdrawn cards yet.'
-    );
+    if (currentMode === 'consigned') {
+      renderCarousel(consignedList, 'No consigned cards yet.');
+    } else if (currentMode === 'grading') {
+      renderCarousel(gradingList, 'No cards sent for grading yet.');
+    } else {
+      renderCarousel(withdrawnList, 'No withdrawn cards yet.');
+    }
   }
 
   function openWdCards(mode) {
-    currentMode = mode === 'consigned' ? 'consigned' : 'withdrawn';
-    setText('wdModalTitle', currentMode === 'consigned' ? 'Consigned Cards' : 'Withdrawn Cards');
+    currentMode = (mode === 'consigned' || mode === 'grading') ? mode : 'withdrawn';
+    setText('wdModalTitle',
+      currentMode === 'consigned' ? 'Consigned Cards' :
+      currentMode === 'grading' ? 'Sent for Grading' : 'Withdrawn Cards');
     wdModalBox.classList.toggle('mode-withdrawn', currentMode === 'withdrawn');
+    wdModalBox.classList.toggle('mode-grading', currentMode === 'grading');
     refreshCarousel();
     wdCardOverlay.classList.add('open');
     track.style.scrollBehavior = 'auto';
@@ -631,6 +656,7 @@
 
   document.getElementById('btnOpenWithdrawnCards').addEventListener('click', function () { openWdCards('withdrawn'); });
   document.getElementById('btnOpenConsigned').addEventListener('click', function () { openWdCards('consigned'); });
+  document.getElementById('btnOpenGrading').addEventListener('click', function () { openWdCards('grading'); });
   document.getElementById('wdCardClose').addEventListener('click', closeWdCards);
   wdCardOverlay.addEventListener('click', function (e) {
     if (e.target === wdCardOverlay) closeWdCards();
@@ -649,11 +675,13 @@
     setText('statPacks', '0');
     setText('statConsigned', '0');
     setText('statWithdrawn', '0');
+    setText('statGrading', '0');
     setText('statCashBalance', money(0));
     setText('acctPulledValue', money(0));
     setText('acctCashValue', money(0));
     withdrawnList = [];
     consignedList = [];
+    gradingList = [];
     refreshCarousel();
     closeWdCards();
   }
@@ -671,6 +699,7 @@
     var totalCash = 0;
     var withdrawnCards = [];
     var consignedCards = [];
+    var gradingCards = [];
 
     cards.forEach(function (c) {
       var status = c.status || 'owned';
@@ -687,6 +716,7 @@
         withdrawnCards.push(c);
       } else if (status === 'grading') {
         // Sent for grading: no longer owned, not cashed. Still counts as a pack opened.
+        gradingCards.push(c);
       } else {
         owned += 1;
         lockedBuyback += Number(c.buyback || 0);
@@ -700,11 +730,13 @@
     setText('statPacks', String(cards.length));
     setText('statConsigned', String(consigned));
     setText('statWithdrawn', String(withdrawn));
+    setText('statGrading', String(gradingCards.length));
     setText('statCashBalance', money(totalCash));
     setText('acctPulledValue', money(totalPulledValue));
     setText('acctCashValue', money(totalCash));
     withdrawnList = withdrawnCards;
     consignedList = consignedCards;
+    gradingList = gradingCards;
     refreshCarousel();
   }
 
