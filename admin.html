@@ -19,6 +19,7 @@
     table.inv-table img { width: 40px; height: 56px; object-fit: cover; border-radius: 4px; background: var(--bg2); }
     .badge-available { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
     .badge-redeemed { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-pending { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
     .toast { position: fixed; bottom: 24px; right: 24px; background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--success); padding: 14px 18px; border-radius: 8px; z-index: 400; font-size: 0.9rem; display: none; }
     .toast.show { display: block; }
 
@@ -61,6 +62,10 @@
     table.inv-table tr.clickable { cursor: pointer; }
     table.inv-table tr.clickable:hover td { background: var(--bg2); }
     .redeemed-hint { color: var(--muted); font-size: 0.8rem; margin: 0 0 12px; }
+
+    /* Withdrawal request action buttons */
+    .wd-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .wd-actions .btn { padding: 6px 10px; font-size: 0.75rem; }
 
     /* Customer details modal */
     .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 500; display: none; align-items: center; justify-content: center; padding: 16px; }
@@ -246,6 +251,36 @@
               </button>
 
             </form>
+          </div>
+        </div>
+      </details>
+
+      <!-- ===== WITHDRAWAL REQUESTS ===== -->
+      <details class="adm-dd">
+        <summary class="btn btn-primary btn-lg">Withdrawal Requests <span class="adm-count" id="cnt-withdrawals"></span></summary>
+        <div class="adm-dd-body">
+          <p class="redeemed-hint">The amount is already taken off the customer's balance when they request it. Pay it by bank transfer, then tap "Mark paid". Tap "Reject" to cancel it and put the money back on their balance.</p>
+
+          <div class="inv-table-wrap">
+            <table class="inv-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Name</th>
+                  <th>Sort code</th>
+                  <th>Account</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+
+              <tbody id="withdrawalsBody">
+                <tr>
+                  <td colspan="7" class="text-center text-dim" style="padding:32px">No withdrawal requests yet</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </details>
@@ -747,6 +782,144 @@
         renderGrading();
       }, function (err) {
         console.error('gradingRequests', err);
+      });
+
+    // ===== WITHDRAWAL REQUESTS (written by dashboard.html: users/{uid}/withdrawalRequests) =====
+    // The amount is already added to the customer's balanceSpent when they request it.
+    //   Mark paid = you sent the money (nothing else changes)
+    //   Reject    = cancel the request AND give the amount back to the customer's balance
+    var withdrawalsMap = {};   // key = full doc path
+
+    function wdMoney(n) {
+      return '£' + Number(n || 0).toFixed(2);
+    }
+
+    function renderWithdrawals() {
+      var rows = Object.keys(withdrawalsMap).map(function (p) {
+        return { path: p, ref: withdrawalsMap[p].ref, data: withdrawalsMap[p].data };
+      });
+
+      var pendingCount = rows.filter(function (r) { return r.data.status === 'pending'; }).length;
+      setCount('cnt-withdrawals', pendingCount + ' pending');
+
+      // Pending first, then newest first
+      function ts(r) {
+        var v = r.data.requestedAt;
+        return v && v.toMillis ? v.toMillis() : Date.now();
+      }
+      rows.sort(function (a, b) {
+        var pa = a.data.status === 'pending' ? 0 : 1;
+        var pb = b.data.status === 'pending' ? 0 : 1;
+        return pa - pb || ts(b) - ts(a);
+      });
+
+      var tbody = document.getElementById('withdrawalsBody');
+
+      if (!rows.length) {
+        tbody.innerHTML =
+          '<tr><td colspan="7" class="text-center text-dim" style="padding:32px">No withdrawal requests yet</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map(function (r) {
+        var d = r.data;
+        var when = d.requestedAt && d.requestedAt.toDate
+          ? d.requestedAt.toDate().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+          : '';
+        var status = d.status || 'pending';
+        var badgeCls = status === 'pending' ? 'badge-pending' : (status === 'paid' ? 'badge-available' : 'badge-redeemed');
+        var actions = status === 'pending'
+          ? '<div class="wd-actions">' +
+              '<button class="btn btn-primary" data-act="paid" data-path="' + escapeHtml(r.path) + '">Mark paid</button>' +
+              '<button class="btn btn-secondary" data-act="reject" data-path="' + escapeHtml(r.path) + '">Reject</button>' +
+            '</div>'
+          : '';
+
+        return '<tr>' +
+          '<td class="text-dim">' + escapeHtml(when) + '</td>' +
+          '<td><strong>' + wdMoney(d.amount) + '</strong></td>' +
+          '<td>' + escapeHtml(d.accountName) + '<br /><span class="text-dim">' + escapeHtml(d.email) + '</span></td>' +
+          '<td>' + escapeHtml(d.sortCode) + '</td>' +
+          '<td>' + escapeHtml(d.accountNumber) + '</td>' +
+          '<td><span class="badge ' + badgeCls + '">' + escapeHtml(status.charAt(0).toUpperCase() + status.slice(1)) + '</span></td>' +
+          '<td>' + actions + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    document.getElementById('withdrawalsBody').addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+
+      var entry = withdrawalsMap[btn.getAttribute('data-path')];
+      if (!entry) return;
+
+      var ref = entry.ref;
+      var amount = Number(entry.data.amount) || 0;
+      var act = btn.getAttribute('data-act');
+
+      if (act === 'paid') {
+        if (!confirm('Mark this ' + wdMoney(amount) + ' withdrawal as paid? Only do this once you have sent the money.')) return;
+
+        btn.disabled = true;
+        db.runTransaction(function (tx) {
+          return tx.get(ref).then(function (s) {
+            if (!s.exists || s.data().status !== 'pending') throw new Error('This request has already been dealt with.');
+            tx.update(ref, {
+              status: 'paid',
+              paidAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          });
+        }).then(function () {
+          showToast('Marked as paid');
+        }).catch(function (err) {
+          btn.disabled = false;
+          alert('Failed: ' + err.message);
+        });
+      }
+
+      if (act === 'reject') {
+        if (!confirm('Reject this ' + wdMoney(amount) + ' withdrawal? The money goes back on the customer\'s balance.')) return;
+
+        btn.disabled = true;
+        var userRef = ref.parent.parent;   // users/{uid}
+
+        db.runTransaction(function (tx) {
+          return Promise.all([tx.get(ref), tx.get(userRef)]).then(function (res) {
+            var reqSnap = res[0], userSnap = res[1];
+            if (!reqSnap.exists || reqSnap.data().status !== 'pending') {
+              throw new Error('This request has already been dealt with.');
+            }
+            var spent = userSnap.exists ? (Number(userSnap.data().balanceSpent) || 0) : 0;
+            var newSpent = Math.max(0, Math.round((spent - amount) * 100) / 100);
+
+            tx.update(userRef, { balanceSpent: newSpent });
+            tx.update(ref, {
+              status: 'rejected',
+              rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          });
+        }).then(function () {
+          showToast('Rejected - balance returned');
+        }).catch(function (err) {
+          btn.disabled = false;
+          alert('Failed: ' + err.message);
+        });
+      }
+    });
+
+    // Needs the collection-group read rule for admin (see firestore.rules)
+    db.collectionGroup('withdrawalRequests')
+      .onSnapshot(function (snap) {
+        withdrawalsMap = {};
+        snap.forEach(function (doc) {
+          withdrawalsMap[doc.ref.path] = { ref: doc.ref, data: doc.data() };
+        });
+        renderWithdrawals();
+      }, function (err) {
+        console.error('withdrawalRequests', err);
+        document.getElementById('withdrawalsBody').innerHTML =
+          '<tr><td colspan="7" class="text-center text-dim" style="padding:32px">Could not load withdrawal requests: ' + escapeHtml(err.message) + '</td></tr>';
       });
 
     // Turn any value (string, object, array) into readable text
