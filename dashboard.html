@@ -363,7 +363,11 @@
     <div class="nav-inner">
       <a href="index.html" class="logo">Kollect <span>Vault</span></a>
       <button class="burger" id="burger" aria-label="Menu">☰</button>
-      <ul class="nav-menu" id="navMenu"></ul>
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="auth.html">Sign In</a></li>
+        <li><a href="admin.html">Admin</a></li>
+      </ul>
       <button type="button" class="nav-auth" id="navAuth">Log in</button>
     </div>
   </nav>
@@ -583,7 +587,6 @@
 (function () {
   var db = window.Kollect.db;
   var auth = window.Kollect.auth;
-  var ADMIN_EMAIL = 'YOUR_ADMIN_EMAIL'; // <-- put your admin email here
   var unsubscribe = null;
   var currentCashBalance = 0; // used by withdrawal request
   var withdrawnList = [];
@@ -599,6 +602,21 @@
   });
   auth.onAuthStateChanged(function (u) {
     navAuth.textContent = u ? 'Log out' : 'Log in';
+  });
+
+  // Admin link in the Account dropdown mirrors the burger menu's Admin link
+  // (the hidden menu keeps running its normal show/hide logic; we just copy the result)
+  var adminLink = document.getElementById('adminLink');
+  function syncAdminLink() {
+    var a = document.querySelector('#navMenu a[href="admin.html"]');
+    var show = !!a && !!auth.currentUser;
+    for (var el = a; show && el && el.id !== 'navMenu'; el = el.parentElement) {
+      if (el.hidden || el.style.display === 'none' || el.classList.contains('hidden')) show = false;
+    }
+    adminLink.style.display = show ? 'block' : 'none';
+  }
+  new MutationObserver(syncAdminLink).observe(document.getElementById('navMenu'), {
+    childList: true, subtree: true, attributes: true
   });
 
   // Highlight the active bottom tab
@@ -1034,8 +1052,7 @@
     document.getElementById('acctSignedIn').style.display = 'block';
     setText('acctName', user.displayName || 'Collector');
     setText('acctEmail', user.email || '');
-    document.getElementById('adminLink').style.display =
-      (user.email || '').toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'block' : 'none';
+    setTimeout(syncAdminLink, 300);
 
     loadContact(user);
 
