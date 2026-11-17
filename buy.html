@@ -335,10 +335,6 @@
     .tier-stock.out { color: #ef4444; }
 
     /* Foil colour per tier (uses the existing .foil-pack markup) */
-    .foil-pack[data-tier="bronze"] { filter: drop-shadow(0 22px 28px rgba(0,0,0,.65)) drop-shadow(0 0 34px rgba(205,127,50,.5)); }
-    .foil-pack[data-tier="bronze"] .foil-crimp { background: linear-gradient(120deg,#5b2e12,#c2713a,#e8a56b,#a35a2a,#5b2e12); background-size: 300% 100%; }
-    .foil-pack[data-tier="bronze"] .foil-body  { background: linear-gradient(160deg,#6b3416 0%,#c2713a 40%,#e8a56b 70%,#8a4a24 100%); }
-
     .foil-pack[data-tier="silver"] { filter: drop-shadow(0 22px 28px rgba(0,0,0,.65)) drop-shadow(0 0 34px rgba(203,213,225,.45)); }
     .foil-pack[data-tier="silver"] .foil-crimp { background: linear-gradient(120deg,#4b5563,#d1d5db,#f9fafb,#9ca3af,#4b5563); background-size: 300% 100%; }
     .foil-pack[data-tier="silver"] .foil-body  { background: linear-gradient(160deg,#4b5563 0%,#9ca3af 35%,#f3f4f6 65%,#9ca3af 100%); }
@@ -747,11 +743,11 @@
   var busy = false;
 
   // Vault Points given per pack opened (rewards.html shows these)
-  var POINTS_BY_TIER = { bronze: 5, silver: 7, gold: 10, platinum: 12, diamond: 15 };
+  var POINTS_BY_TIER = { silver: 7, gold: 10, platinum: 12, diamond: 15 };
   var RAW_POINTS = 2;
 
   // Vault Points cost to buy a graded pack with points (matches the shop on rewards.html)
-  var POINTS_COST = { bronze: 1000, silver: 1500, gold: 2500, platinum: 3500, diamond: 7500 };
+  var POINTS_COST = { silver: 1500, gold: 2500, platinum: 3500, diamond: 7500 };
   // Vault Points cost to buy a raw card with points (EDIT THIS to change it)
   var RAW_POINTS_COST = 500;
   var myPoints = 0, pointsUnsub = null;
@@ -791,6 +787,8 @@
   var qs = new URLSearchParams(window.location.search);
   var voucherId = qs.get('voucher');
   var voucherTier = qs.get('tier');
+  // Bronze packs were removed: old Bronze vouchers open a Silver pack instead
+  if (voucherTier === 'bronze') voucherTier = 'silver';
 
   function voucherOn(cat, kind, pay) {
     return !!voucherId && kind === 'graded' && pay !== 'points' && pay !== 'balance' && selectedTier[cat].id === voucherTier;
@@ -822,25 +820,25 @@
 
   // =====================================================================
   // GRADED TIERS — EDIT THESE (one list per category)
-  // price = what the customer pays
-  // min / max = the card's "market" value range that tier can pull
-  // max: null = no upper limit
-  // A card is eligible if min <= market <= max
+  // price     = what the customer pays
+  // min / max = market value range of NORMAL pulls (about 64% of price on average)
+  // grailOdds = chance a pack hits a "grail" (0.01 = 1 in 100 packs)
+  // grailCount= grail is picked from the N most expensive cards available...
+  // grailMax  = ...that are worth no more than this (keeps every tier profitable)
+  // Worst case cost per pack = (1-odds) x max + odds x grailMax, always below price.
   // =====================================================================
   var POKEMON_TIERS = [
-    { id: 'bronze',   name: 'Bronze',   price: 10,  min: 8,   max: 25,   color: '#c2713a' },
-    { id: 'silver',   name: 'Silver',   price: 25,  min: 20,  max: 60,   color: '#cbd5e1' },
-    { id: 'gold',     name: 'Gold',     price: 50,  min: 40,  max: 120,  color: '#f59e0b' },
-    { id: 'platinum', name: 'Platinum', price: 100, min: 80,  max: 300,  color: '#8b5cf6' },
-    { id: 'diamond',  name: 'Diamond',  price: 250, min: 200, max: null, color: '#38bdf8' }
+    { id: 'silver',   name: 'Silver',   price: 25,  min: 12,  max: 20,  grailMax: 300,  grailOdds: 0.01, grailCount: 10, color: '#cbd5e1' },
+    { id: 'gold',     name: 'Gold',     price: 50,  min: 25,  max: 40,  grailMax: 600,  grailOdds: 0.01, grailCount: 10, color: '#f59e0b' },
+    { id: 'platinum', name: 'Platinum', price: 100, min: 50,  max: 80,  grailMax: 1200, grailOdds: 0.01, grailCount: 10, color: '#8b5cf6' },
+    { id: 'diamond',  name: 'Diamond',  price: 250, min: 125, max: 200, grailMax: 3000, grailOdds: 0.01, grailCount: 10, color: '#38bdf8' }
   ];
 
   var FOOTBALL_TIERS = [
-    { id: 'bronze',   name: 'Bronze',   price: 10,  min: 8,   max: 25,   color: '#c2713a' },
-    { id: 'silver',   name: 'Silver',   price: 25,  min: 20,  max: 60,   color: '#cbd5e1' },
-    { id: 'gold',     name: 'Gold',     price: 50,  min: 40,  max: 120,  color: '#f59e0b' },
-    { id: 'platinum', name: 'Platinum', price: 100, min: 80,  max: 300,  color: '#8b5cf6' },
-    { id: 'diamond',  name: 'Diamond',  price: 250, min: 200, max: null, color: '#38bdf8' }
+    { id: 'silver',   name: 'Silver',   price: 25,  min: 12,  max: 20,  grailMax: 300,  grailOdds: 0.01, grailCount: 10, color: '#cbd5e1' },
+    { id: 'gold',     name: 'Gold',     price: 50,  min: 25,  max: 40,  grailMax: 600,  grailOdds: 0.01, grailCount: 10, color: '#f59e0b' },
+    { id: 'platinum', name: 'Platinum', price: 100, min: 50,  max: 80,  grailMax: 1200, grailOdds: 0.01, grailCount: 10, color: '#8b5cf6' },
+    { id: 'diamond',  name: 'Diamond',  price: 250, min: 125, max: 200, grailMax: 3000, grailOdds: 0.01, grailCount: 10, color: '#38bdf8' }
   ];
 
   // =====================================================================
@@ -867,8 +865,8 @@
   var selectedCat = 'pokemon';
   var selectedKind = 'graded';
   var selectedTier = {
-    pokemon: POKEMON_TIERS[1],   // starts on Silver (the old £25 pack)
-    football: FOOTBALL_TIERS[1]
+    pokemon: POKEMON_TIERS[0],   // starts on Silver (cheapest tier)
+    football: FOOTBALL_TIERS[0]
   };
   var stockByTier = { pokemon: null, football: null };  // filled in once inventory loads
 
@@ -893,6 +891,7 @@
   function money2(n) {
     return '£' + Number(n).toFixed(2);
   }
+  // Is this card in the tier's NORMAL pull range?
   function inTier(market, tier) {
     var m = Number(market) || 0;
     if (m < tier.min) return false;
@@ -1053,11 +1052,10 @@
     // text
     el(cat, 'TierName').textContent = t.name + ' Pack';
     el(cat, 'TierMin').textContent = money(t.min);
-    el(cat, 'TierMax').textContent = t.max === null ? money(t.min * 5) + '+' : money(t.max);
-    if (t.max === null) el(cat, 'TierMax').textContent = 'No limit';
+    el(cat, 'TierMax').textContent = money(t.grailMax);
     el(cat, 'TierPrice').innerHTML = money(t.price) + ' <small>/ pack</small>';
     el(cat, 'TierValueLine').textContent =
-      'Market value ' + money(t.min) + (t.max === null ? ' and up' : ' – ' + money(t.max));
+      'Usually ' + money(t.min) + ' – ' + money(t.max) + ' · ' + Math.round(t.grailOdds * 100) + '% chance of a grail up to ' + money(t.grailMax);
 
     // stock + button
     var btn = el(cat, 'Buy');
@@ -1128,7 +1126,7 @@
       : 'Use ' + money2(price) + ' Cashed Out Balance';
   }
 
-  // Counts available graded cards per tier (best effort; page still works if it fails)
+  // Counts available graded cards per tier (normal-pull range; best effort, page still works if it fails)
   function loadStock(cat) {
     var C = CATS[cat];
     db.collection(C.gradedColl)
@@ -1164,7 +1162,9 @@
 
   // cat: 'pokemon' or 'football'. kind: 'graded' or 'raw'. tier: only used for graded.
   // Each category has its own graded + raw inventory collections (see CATS).
-  // Graded pulls only consider cards whose market value is inside the tier's range.
+  // Graded pulls: normally a card inside the tier's min..max range. With chance
+  // tier.grailOdds the pull is a "grail": one of the tier.grailCount most expensive
+  // available cards worth no more than tier.grailMax.
   // spend = Vault Points spent, spendBal = £ of Cashed Out Balance spent, cashGross = total cashed buyback £
   function pullCard(uid, cat, kind, tier, spend, paid, spendBal, cashGross) {
     kind = kind || 'graded';
@@ -1173,13 +1173,27 @@
       .where('status', '==', 'available')
       .get()
       .then(function (snap) {
-        var ids = [];
+        var low = [], grail = [];
         snap.forEach(function (d) {
-          if (kind === 'graded' && tier && !inTier(d.data().market, tier)) return;
-          ids.push(d.id);
+          var m = Number(d.data().market) || 0;
+          if (kind === 'graded' && tier) {
+            if (inTier(m, tier)) low.push({ id: d.id, m: m });
+            else if (m > tier.max && m <= tier.grailMax) grail.push({ id: d.id, m: m });
+          } else {
+            low.push({ id: d.id, m: m });
+          }
         });
-        if (!ids.length) throw new Error('SOLD_OUT');
-        shuffle(ids);
+
+        var pool = low;
+        if (kind === 'graded' && tier && grail.length && Math.random() < tier.grailOdds) {
+          grail.sort(function (a, b) { return b.m - a.m; });
+          pool = grail.slice(0, tier.grailCount);   // the priciest cards under the cap
+        }
+        if (!pool.length) throw new Error('SOLD_OUT');
+
+        var ids = shuffle(pool.map(function (x) { return x.id; }));
+        // If every grail gets claimed by someone else first, fall back to normal cards
+        if (pool !== low) ids = ids.concat(shuffle(low.map(function (x) { return x.id; })));
         return tryClaim(ids, 0, uid, collName, kind, tier, cat, spend, paid, spendBal, cashGross);
       });
   }
@@ -1201,8 +1215,8 @@
 
         var c = snap.data();
 
-        // Double-check the tier range at claim time
-        if (kind === 'graded' && tier && !inTier(c.market, tier)) return null;
+        // Double-check the value is inside the tier's allowed range (normal or grail) at claim time
+        if (kind === 'graded' && tier && (Number(c.market) < tier.min || Number(c.market) > tier.grailMax)) return null;
 
         var buyback = Math.round(Number(c.market || 0) * BUYBACK_PERCENT * 100) / 100;
 
@@ -1227,8 +1241,8 @@
         });
         tx.set(ownRef, owned);
 
-        // Vault Points for opening a pack: 5-15 by tier, 2 for raw (pointsEarned drives the points milestones)
-        var pts = kind === 'raw' ? RAW_POINTS : (POINTS_BY_TIER[tier && tier.id] || 5);
+        // Vault Points for opening a pack: 7-15 by tier, 2 for raw (pointsEarned drives the points milestones)
+        var pts = kind === 'raw' ? RAW_POINTS : (POINTS_BY_TIER[tier && tier.id] || 7);
         var u = uSnap.exists ? uSnap.data() : {};
         spend = Number(spend) || 0;
         if (spend && (Number(u.points) || 0) < spend) throw new Error('Not enough Vault Points');
