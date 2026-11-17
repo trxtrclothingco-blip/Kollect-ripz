@@ -399,25 +399,28 @@
   var LB_BUDGET_PCT = 0.25;          // leaderboard prize cost must be <= 25% of the winner's total spend
 
   // Rank milestones: at = TOTAL £ SPENT on packs. ic = badge symbol.
-  // Cumulative free-pack cost stays around 5-6% of spend at every step.
+  // Thresholds are 20% lower than before. Cumulative free-pack cost (by rank) as a % of spend:
+  //   Soldier 8.8%, Knight 7.0%, Captain 7.1%, Commander 7.2%, Warlord 6.2%, Titan 6.0%, Omega 7.5%
+  // All sit well inside the 15% hard cap (FREE_BUDGET_PCT), which is enforced on every claim.
   var RECRUIT = { name: 'Recruit', ic: 'recruit', c: '#9ca3af', c2: '#4b5563' };
   var STAGES = [
-    { id: 'soldier',   name: 'Soldier',   at: 200,   ic: 'soldier',   c: '#9ca3af', c2: '#4b5563', rewards: [{ tier: 'silver', qty: 1 }] },
-    { id: 'knight',    name: 'Knight',    at: 500,   ic: 'knight',    c: '#e8a56b', c2: '#8a4a24', rewards: [{ tier: 'silver', qty: 1 }] },
-    { id: 'captain',   name: 'Captain',   at: 1000,  ic: 'star',      c: '#e5e7eb', c2: '#6b7280', rewards: [{ tier: 'gold', qty: 1 }] },
-    { id: 'commander', name: 'Commander', at: 2000,  ic: 'crown',     c: '#fbbf24', c2: '#b45309', rewards: [{ tier: 'gold', qty: 2 }] },
-    { id: 'warlord',   name: 'Warlord',   at: 3500,  ic: 'flame',     c: '#f87171', c2: '#991b1b', rewards: [{ tier: 'gold', qty: 2 }] },
-    { id: 'titan',     name: 'Titan',     at: 6000,  ic: 'mountain',  c: '#a78bfa', c2: '#4c1d95', rewards: [{ tier: 'platinum', qty: 2 }] },
-    { id: 'omega',     name: 'Omega',     at: 12000, ic: 'omega',     c: '#22d3ee', c2: '#0e7490', rewards: [{ tier: 'diamond', qty: 2 }] }
+    { id: 'soldier',   name: 'Soldier',   at: 160,   ic: 'soldier',   c: '#9ca3af', c2: '#4b5563', rewards: [{ tier: 'silver', qty: 1 }] },
+    { id: 'knight',    name: 'Knight',    at: 400,   ic: 'knight',    c: '#e8a56b', c2: '#8a4a24', rewards: [{ tier: 'silver', qty: 1 }] },
+    { id: 'captain',   name: 'Captain',   at: 800,   ic: 'star',      c: '#e5e7eb', c2: '#6b7280', rewards: [{ tier: 'gold', qty: 1 }] },
+    { id: 'commander', name: 'Commander', at: 1600,  ic: 'crown',     c: '#fbbf24', c2: '#b45309', rewards: [{ tier: 'gold', qty: 2 }] },
+    { id: 'warlord',   name: 'Warlord',   at: 2800,  ic: 'flame',     c: '#f87171', c2: '#991b1b', rewards: [{ tier: 'gold', qty: 2 }] },
+    { id: 'titan',     name: 'Titan',     at: 4800,  ic: 'mountain',  c: '#a78bfa', c2: '#4c1d95', rewards: [{ tier: 'platinum', qty: 2 }] },
+    { id: 'omega',     name: 'Omega',     at: 9600,  ic: 'omega',     c: '#22d3ee', c2: '#0e7490', rewards: [{ tier: 'diamond', qty: 2 }, { tier: 'platinum', qty: 2 }, { tier: 'gold', qty: 1 }] }
   ];
-  // Vault Points milestones: at = total points earned.
-  // Points come from check-ins (capped by spend), quests and opening packs, so each reward
-  // needs several hundred £ of spend behind it.
+  // Vault Points milestones: at = total points earned. Thresholds are 20% lower than before.
+  // (ids are unchanged on purpose, so anyone who already claimed a milestone can't claim it twice)
+  // Points come from check-ins (capped by spend), quests and opening packs. Every claim still
+  // goes through the free-pack budget check, so these can never cost more than 15% of spend.
   var POINT_STAGES = [
-    { id: 'p1000',  name: '1000 pts',  at: 1000,  ic: 'coin',  c: '#f59e0b', c2: '#92400e', rewards: [{ tier: 'silver', qty: 1 }] },
-    { id: 'p2500',  name: '2500 pts',  at: 2500,  ic: 'bolt',  c: '#fbbf24', c2: '#b45309', rewards: [{ tier: 'gold', qty: 1 }] },
-    { id: 'p5000',  name: '5000 pts',  at: 5000,  ic: 'star',  c: '#a78bfa', c2: '#4c1d95', rewards: [{ tier: 'platinum', qty: 1 }] },
-    { id: 'p10000', name: '10000 pts', at: 10000, ic: 'gem',   c: '#10b981', c2: '#064e3b', rewards: [{ tier: 'diamond', qty: 1 }] }
+    { id: 'p1000',  name: '800 pts',   at: 800,   ic: 'coin',  c: '#f59e0b', c2: '#92400e', rewards: [{ tier: 'silver', qty: 1 }] },
+    { id: 'p2500',  name: '2000 pts',  at: 2000,  ic: 'bolt',  c: '#fbbf24', c2: '#b45309', rewards: [{ tier: 'gold', qty: 1 }] },
+    { id: 'p5000',  name: '4000 pts',  at: 4000,  ic: 'star',  c: '#a78bfa', c2: '#4c1d95', rewards: [{ tier: 'platinum', qty: 1 }] },
+    { id: 'p10000', name: '8000 pts',  at: 8000,  ic: 'gem',   c: '#10b981', c2: '#064e3b', rewards: [{ tier: 'diamond', qty: 1 }] }
   ];
   // Points shop: cost = Vault Points. Keep these the same as POINTS_COST in buy.html.
   var SHOP = [
