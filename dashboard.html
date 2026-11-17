@@ -588,7 +588,10 @@
   var db = window.Kollect.db;
   var auth = window.Kollect.auth;
   var unsubscribe = null;
-  var currentCashBalance = 0; // used by withdrawal request
+  var unsubscribeUser = null;
+  var currentCashBalance = 0; // used by withdrawal request (cashed out minus balance spent on packs)
+  var cashGross = 0;          // total buyback cash from cards with status 'cashed'
+  var balanceSpent = 0;       // £ spent on packs from the cashed out balance (users/{uid}.balanceSpent)
   var withdrawnList = [];
   var consignedList = [];
   var gradingList = [];
@@ -630,6 +633,13 @@
 
   function setText(id, text) {
     document.getElementById(id).textContent = text;
+  }
+
+  // Cashed out balance = buyback cash minus whatever was spent on packs from it
+  function applyBalance() {
+    currentCashBalance = Math.max(0, Math.round((cashGross - balanceSpent) * 100) / 100);
+    setText('statCashBalance', money(currentCashBalance));
+    setText('wdrAvailable', money(currentCashBalance));
   }
 
   function escapeHtml(str) {
@@ -777,14 +787,15 @@
   });
 
   function resetStats() {
-    currentCashBalance = 0;
+    cashGross = 0;
+    balanceSpent = 0;
+    applyBalance();
     setText('statOwned', '0');
     setText('statLocked', money(0));
     setText('statPacks', '0');
     setText('statConsigned', '0');
     setText('statWithdrawn', '0');
     setText('statGrading', '0');
-    setText('statCashBalance', money(0));
     setText('acctPulledValue', money(0));
     setText('acctCashValue', money(0));
     withdrawnList = [];
@@ -831,7 +842,8 @@
       }
     });
 
-    currentCashBalance = totalCash;
+    cashGross = Math.round(totalCash * 100) / 100;
+    applyBalance();
 
     setText('statOwned', String(owned));
     setText('statLocked', money(lockedBuyback));
@@ -839,7 +851,6 @@
     setText('statConsigned', String(consigned));
     setText('statWithdrawn', String(withdrawn));
     setText('statGrading', String(gradingCards.length));
-    setText('statCashBalance', money(totalCash));
     setText('acctPulledValue', money(totalPulledValue));
     setText('acctCashValue', money(totalCash));
     withdrawnList = withdrawnCards;
@@ -1039,6 +1050,10 @@
       unsubscribe();
       unsubscribe = null;
     }
+    if (unsubscribeUser) {
+      unsubscribeUser();
+      unsubscribeUser = null;
+    }
 
     if (!user) {
       document.getElementById('acctSignedOut').style.display = 'block';
@@ -1055,6 +1070,14 @@
     setTimeout(syncAdminLink, 300);
 
     loadContact(user);
+
+    // Balance spent on packs (written by buy.html when paying with Cashed Out Balance)
+    unsubscribeUser = db.collection('users').doc(user.uid).onSnapshot(function (s) {
+      balanceSpent = s.exists ? (Number(s.data().balanceSpent) || 0) : 0;
+      applyBalance();
+    }, function (err) {
+      console.error(err);
+    });
 
     unsubscribe = db.collection('users').doc(user.uid).collection('collection')
       .onSnapshot(function (snap) {
