@@ -479,7 +479,7 @@
             </div>
             <p class="tier-stock" id="pkTierStock"></p>
 
-            <div class="pack-price" id="pkTierPrice">£25 <small>/ pack</small></div>
+            <div class="pack-price" id="pkTierPrice">£29 <small>/ pack</small></div>
             <ul class="pack-features">
               <li>One graded Pokemon card (PSA / CGC / BGS)</li>
               <li>Grade 9 or Grade 10 only</li>
@@ -553,7 +553,7 @@
             </div>
             <p class="tier-stock" id="fbTierStock"></p>
 
-            <div class="pack-price" id="fbTierPrice">£25 <small>/ pack</small></div>
+            <div class="pack-price" id="fbTierPrice">£29 <small>/ pack</small></div>
             <ul class="pack-features">
               <li>One graded football card (PSA / CGC / BGS)</li>
               <li>Grade 9 or Grade 10 only</li>
@@ -626,7 +626,7 @@
       <h2>Checkout</h2>
       <div class="pay-row">
         <span class="text-muted" id="payItemName">Graded Card</span>
-        <span id="payItemPrice">£25.00</span>
+        <span id="payItemPrice">£29.00</span>
       </div>
       <div class="pay-row">
         <span class="text-muted">Processing fee</span>
@@ -634,7 +634,7 @@
       </div>
       <div class="pay-row">
         <span class="pay-total">Total</span>
-        <span class="pay-total" id="payTotal">£25.00</span>
+        <span class="pay-total" id="payTotal">£29.00</span>
       </div>
 
       <div class="form-group">
@@ -652,7 +652,7 @@
         </div>
       </div>
 
-      <button class="btn btn-primary w-full" id="btnPayNow">Pay Now — £25</button>
+      <button class="btn btn-primary w-full" id="btnPayNow">Pay Now — £29</button>
       <p class="text-dim text-center mt-2" style="font-size:0.78rem" id="payNote">Demo checkout — no real charge</p>
     </div>
   </div>
@@ -821,25 +821,35 @@
   // =====================================================================
   // GRADED TIERS — EDIT THESE (one list per category)
   // price     = what the customer pays
-  // min / max = market value range of NORMAL pulls (about 64% of price on average)
-  // grailOdds = chance a pack hits a "grail" (0.01 = 1 in 100 packs)
+  // min / max = market value range of NORMAL pulls
+  // grailOdds = chance a PAID pack hits a "grail" (0.01 = 1 in 100 packs)
   // grailCount= grail is picked from the N most expensive cards available...
-  // grailMax  = ...that are worth no more than this (keeps every tier profitable)
-  // Worst case cost per pack = (1-odds) x max + odds x grailMax, always below price.
+  // grailMax  = ...that are worth no more than this
+  //
+  // FREE packs (reward vouchers + Vault Points packs) NEVER roll a grail, and
+  // pull from the cheaper half of the tier range first (see FREE_PACK_CHEAP_FIRST).
+  //
+  // Normal pulls stay below the pack price, but a grail can cost several times
+  // the price, so check the expected cost: (1-odds) x average normal pull
+  // + odds x average grail. Silver is now £29 with grailMax £150 to stay profitable.
   // =====================================================================
   var POKEMON_TIERS = [
-    { id: 'silver',   name: 'Silver',   price: 25,  min: 12,  max: 20,  grailMax: 300,  grailOdds: 0.01, grailCount: 10, color: '#cbd5e1' },
+    { id: 'silver',   name: 'Silver',   price: 29,  min: 12,  max: 20,  grailMax: 150,  grailOdds: 0.01, grailCount: 10, color: '#cbd5e1' },
     { id: 'gold',     name: 'Gold',     price: 50,  min: 25,  max: 40,  grailMax: 600,  grailOdds: 0.01, grailCount: 10, color: '#f59e0b' },
     { id: 'platinum', name: 'Platinum', price: 100, min: 50,  max: 80,  grailMax: 1200, grailOdds: 0.01, grailCount: 10, color: '#8b5cf6' },
     { id: 'diamond',  name: 'Diamond',  price: 250, min: 125, max: 200, grailMax: 3000, grailOdds: 0.01, grailCount: 10, color: '#38bdf8' }
   ];
 
   var FOOTBALL_TIERS = [
-    { id: 'silver',   name: 'Silver',   price: 25,  min: 12,  max: 20,  grailMax: 300,  grailOdds: 0.01, grailCount: 10, color: '#cbd5e1' },
+    { id: 'silver',   name: 'Silver',   price: 29,  min: 12,  max: 20,  grailMax: 150,  grailOdds: 0.01, grailCount: 10, color: '#cbd5e1' },
     { id: 'gold',     name: 'Gold',     price: 50,  min: 25,  max: 40,  grailMax: 600,  grailOdds: 0.01, grailCount: 10, color: '#f59e0b' },
     { id: 'platinum', name: 'Platinum', price: 100, min: 50,  max: 80,  grailMax: 1200, grailOdds: 0.01, grailCount: 10, color: '#8b5cf6' },
     { id: 'diamond',  name: 'Diamond',  price: 250, min: 125, max: 200, grailMax: 3000, grailOdds: 0.01, grailCount: 10, color: '#38bdf8' }
   ];
+
+  // Free packs (voucher / Vault Points): true = try the cheaper half of the tier range first.
+  // Set to false if you only want to remove grails from free packs.
+  var FREE_PACK_CHEAP_FIRST = true;
 
   // =====================================================================
   // CATEGORIES
@@ -1162,11 +1172,13 @@
 
   // cat: 'pokemon' or 'football'. kind: 'graded' or 'raw'. tier: only used for graded.
   // Each category has its own graded + raw inventory collections (see CATS).
-  // Graded pulls: normally a card inside the tier's min..max range. With chance
+  // Paid graded pulls: normally a card inside the tier's min..max range. With chance
   // tier.grailOdds the pull is a "grail": one of the tier.grailCount most expensive
   // available cards worth no more than tier.grailMax.
+  // FREE graded pulls (free = true: reward voucher or Vault Points): never a grail,
+  // and the cheaper half of the tier range is tried first.
   // spend = Vault Points spent, spendBal = £ of Cashed Out Balance spent, cashGross = total cashed buyback £
-  function pullCard(uid, cat, kind, tier, spend, paid, spendBal, cashGross) {
+  function pullCard(uid, cat, kind, tier, spend, paid, spendBal, cashGross, free) {
     kind = kind || 'graded';
     var collName = kind === 'raw' ? CATS[cat].rawColl : CATS[cat].gradedColl;
     return db.collection(collName)
@@ -1185,22 +1197,33 @@
         });
 
         var pool = low;
-        if (kind === 'graded' && tier && grail.length && Math.random() < tier.grailOdds) {
+        var fallback = low;   // used if every card in pool is claimed first
+        if (kind === 'graded' && tier && free) {
+          // FREE pack: no grail, cheaper half of the range first
+          if (FREE_PACK_CHEAP_FIRST) {
+            var mid = (tier.min + tier.max) / 2;
+            var cheap = low.filter(function (x) { return x.m <= mid; });
+            if (cheap.length) {
+              pool = cheap;
+              fallback = low.filter(function (x) { return x.m > mid; });
+            }
+          }
+        } else if (kind === 'graded' && tier && grail.length && Math.random() < tier.grailOdds) {
           grail.sort(function (a, b) { return b.m - a.m; });
           pool = grail.slice(0, tier.grailCount);   // the priciest cards under the cap
         }
         if (!pool.length) throw new Error('SOLD_OUT');
 
         var ids = shuffle(pool.map(function (x) { return x.id; }));
-        // If every grail gets claimed by someone else first, fall back to normal cards
-        if (pool !== low) ids = ids.concat(shuffle(low.map(function (x) { return x.id; })));
-        return tryClaim(ids, 0, uid, collName, kind, tier, cat, spend, paid, spendBal, cashGross);
+        // If every card in the pool gets claimed by someone else first, fall back to normal cards
+        if (pool !== low) ids = ids.concat(shuffle(fallback.map(function (x) { return x.id; })));
+        return tryClaim(ids, 0, uid, collName, kind, tier, cat, spend, paid, spendBal, cashGross, free);
       });
   }
 
   // Claims one card inside a transaction. If someone else got it first,
   // it moves on to the next card in the shuffled list.
-  function tryClaim(ids, i, uid, collName, kind, tier, cat, spend, paid, spendBal, cashGross) {
+  function tryClaim(ids, i, uid, collName, kind, tier, cat, spend, paid, spendBal, cashGross, free) {
     if (i >= ids.length) return Promise.reject(new Error('SOLD_OUT'));
 
     var invRef = db.collection(collName).doc(ids[i]);
@@ -1215,8 +1238,12 @@
 
         var c = snap.data();
 
-        // Double-check the value is inside the tier's allowed range (normal or grail) at claim time
-        if (kind === 'graded' && tier && (Number(c.market) < tier.min || Number(c.market) > tier.grailMax)) return null;
+        // Double-check the value is inside the tier's allowed range at claim time
+        // (free packs can never claim above the normal max, so no grails)
+        if (kind === 'graded' && tier) {
+          var cap = free ? tier.max : tier.grailMax;
+          if (Number(c.market) < tier.min || Number(c.market) > cap) return null;
+        }
 
         var buyback = Math.round(Number(c.market || 0) * BUYBACK_PERCENT * 100) / 100;
 
@@ -1286,7 +1313,7 @@
       });
     }).then(function (result) {
       if (result) return result;
-      return tryClaim(ids, i + 1, uid, collName, kind, tier, cat, spend, paid, spendBal, cashGross);
+      return tryClaim(ids, i + 1, uid, collName, kind, tier, cat, spend, paid, spendBal, cashGross, free);
     });
   }
 
@@ -1428,10 +1455,12 @@
     var spendBal = (selectedPay === 'balance') ? priceOf(cat, selectedKind) : 0;
     // Only real purchases count toward the £20 rewards unlock (not free packs, points packs or balance packs)
     var paid = (usingVoucher || spend || spendBal) ? 0 : priceOf(cat, selectedKind);
+    // Free packs (voucher or Vault Points): no grail chance, cheaper cards first
+    var free = !!(usingVoucher || spend);
 
     // Free pack: mark the voucher used first, then pull the card
     var pullPromise = (usingVoucher ? useVoucher(uid) : Promise.resolve())
-      .then(function () { return pullCard(uid, cat, selectedKind, tier, spend, paid, spendBal, myCashGross); })
+      .then(function () { return pullCard(uid, cat, selectedKind, tier, spend, paid, spendBal, myCashGross, free); })
       .catch(function (err) {
         // Out of stock: give the free pack back
         if (usingVoucher && err && err.message === 'SOLD_OUT') {
