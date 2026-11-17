@@ -380,8 +380,35 @@
     }
 
     if (action === 'grade') {
-      if (!confirm('Send this card for grading? You will be taken to Get Graded.')) return;
-      window.location.href = GRADE_URL;
+      if (!confirm('Send this card for grading? It will leave your collection and you will be taken to Get Graded.')) return;
+
+      var gc = cardsById[cardId] || {};
+      btn.disabled = true;
+
+      // Mark the card as sent for grading and log a request for the admin panel
+      var batch = db.batch();
+      batch.update(cardRef, {
+        status: 'grading',
+        gradingAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      batch.set(db.collection('gradingRequests').doc(user.uid + '_' + cardId), {
+        uid: user.uid,
+        cardId: cardId,
+        name: gc.name || '',
+        imageUrl: gc.imageUrl || '',
+        category: gc.category || 'pokemon',
+        market: Number(gc.market) || 0,
+        buyback: Number(gc.buyback) || 0,
+        status: 'pending',
+        requestedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      batch.commit().then(function () {
+        window.location.href = GRADE_URL;
+      }).catch(function (err) {
+        btn.disabled = false;
+        alert('Could not send this card for grading: ' + err.message);
+      });
     }
 
     if (action === 'withdraw') {
