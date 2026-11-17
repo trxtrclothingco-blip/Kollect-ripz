@@ -286,6 +286,24 @@
       font-weight: 700;
     }
 
+
+    /* Top bar: no burger, borderless Log in / Log out button */
+    .burger, .nav-menu { display: none !important; }
+    .nav-auth {
+      margin-left: auto;
+      padding: 8px 4px;
+      background: none;
+      border: none;
+      outline: none;
+      box-shadow: none;
+      color: #cbd5e1;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .nav-auth:hover { color: #fff; }
+
     /* Bottom tab bar */
     body { padding-bottom: 100px; }
     .tabbar {
@@ -345,37 +363,14 @@
     <div class="nav-inner">
       <a href="index.html" class="logo">Kollect <span>Vault</span></a>
       <button class="burger" id="burger" aria-label="Menu">☰</button>
-      <ul class="nav-menu" id="navMenu">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="auth.html">Sign In</a></li>
-        <li><a href="admin.html">Admin</a></li>
-        
-      </ul>
+      <ul class="nav-menu" id="navMenu"></ul>
+      <button type="button" class="nav-auth" id="navAuth">Log in</button>
     </div>
   </nav>
 
   <div class="container page-content">
     <h1 class="page-title">Dashboard</h1>
     <p class="page-sub">Your vault overview and quick actions.</p>
-
-    <!-- Rewards + Packs -->
-    <div class="hub-row">
-      <div class="rewards-banner">
-        <div class="rewards-banner-text">
-          <strong>🎁 My Rewards</strong>
-          <span>Daily check-in and your progress.</span>
-        </div>
-        <a href="rewards.html" class="btn btn-primary">Rewards</a>
-      </div>
-
-      <div class="rewards-banner packs-banner">
-        <div class="rewards-banner-text">
-          <strong>🎴 Packs</strong>
-          <span>Open a mystery graded pack.</span>
-        </div>
-        <a href="buy.html" class="btn btn-primary">Packs</a>
-      </div>
-    </div>
 
     <div class="stat-grid">
       <div class="stat-card">
@@ -434,6 +429,7 @@
           </summary>
 
           <div class="acct-body">
+            <a href="admin.html" id="adminLink" class="btn btn-secondary btn-sm w-full" style="display:none;margin:10px 0 6px;text-align:center">Admin panel</a>
             <div style="display:flex;justify-content:space-between;padding:10px 0">
               <span class="text-muted">Total card value pulled</span>
               <strong id="acctPulledValue">£0.00</strong>
@@ -570,9 +566,9 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="11" cy="12" r="3.5"/><path d="M11 9.5v1M11 13.5v1M8.5 12h1M12.5 12h1M21 9v2M21 13v2"/></svg>
       Vault
     </a>
-    <a href="auth.html" class="tab">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 18c1.5-2.5 3.2-3.5 5.5-3.5s4 1 5.5 3.5"/></svg>
-      Account
+    <a href="index.html" class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      Pulls
     </a>
   </nav>
 
@@ -587,12 +583,23 @@
 (function () {
   var db = window.Kollect.db;
   var auth = window.Kollect.auth;
+  var ADMIN_EMAIL = 'YOUR_ADMIN_EMAIL'; // <-- put your admin email here
   var unsubscribe = null;
   var currentCashBalance = 0; // used by withdrawal request
   var withdrawnList = [];
   var consignedList = [];
   var gradingList = [];
   var currentMode = 'withdrawn';
+
+  // Top bar Log in / Log out button
+  var navAuth = document.getElementById('navAuth');
+  navAuth.addEventListener('click', function () {
+    if (auth.currentUser) auth.signOut();
+    else window.location.href = 'auth.html';
+  });
+  auth.onAuthStateChanged(function (u) {
+    navAuth.textContent = u ? 'Log out' : 'Log in';
+  });
 
   // Highlight the active bottom tab
   document.querySelectorAll('#tabbar .tab').forEach(function (a) {
@@ -1027,6 +1034,8 @@
     document.getElementById('acctSignedIn').style.display = 'block';
     setText('acctName', user.displayName || 'Collector');
     setText('acctEmail', user.email || '');
+    document.getElementById('adminLink').style.display =
+      (user.email || '').toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'block' : 'none';
 
     loadContact(user);
 
