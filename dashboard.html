@@ -660,7 +660,8 @@
 
   // Every card in users/{uid}/collection is one opened pack.
   // status: missing or 'owned' = still owned, 'cashed' = bought back,
-  // 'consigned' = consigned, 'withdrawn' = physical card requested.
+  // 'consigned' = consigned, 'withdrawn' = physical card requested,
+  // 'grading' = sent for grading.
   function updateStats(cards) {
     var owned = 0;
     var consigned = 0;
@@ -684,6 +685,8 @@
       } else if (status === 'withdrawn') {
         withdrawn += 1;
         withdrawnCards.push(c);
+      } else if (status === 'grading') {
+        // Sent for grading: no longer owned, not cashed. Still counts as a pack opened.
       } else {
         owned += 1;
         lockedBuyback += Number(c.buyback || 0);
