@@ -589,9 +589,9 @@
   var auth = window.Kollect.auth;
   var unsubscribe = null;
   var unsubscribeUser = null;
-  var currentCashBalance = 0; // used by withdrawal request (cashed out minus balance spent on packs)
+  var currentCashBalance = 0; // used by withdrawal request (cashed out minus balance spent on packs/withdrawals)
   var cashGross = 0;          // total buyback cash from cards with status 'cashed'
-  var balanceSpent = 0;       // £ spent on packs from the cashed out balance (users/{uid}.balanceSpent)
+  var balanceSpent = 0;       // £ spent on packs AND requested for withdrawal (users/{uid}.balanceSpent)
   var withdrawnList = [];
   var consignedList = [];
   var gradingList = [];
@@ -635,7 +635,7 @@
     document.getElementById(id).textContent = text;
   }
 
-  // Cashed out balance = buyback cash minus whatever was spent on packs from it
+  // Cashed out balance = buyback cash minus whatever was spent on packs or requested for withdrawal
   function applyBalance() {
     currentCashBalance = Math.max(0, Math.round((cashGross - balanceSpent) * 100) / 100);
     setText('statCashBalance', money(currentCashBalance));
@@ -1021,14 +1021,29 @@
     btn.textContent = 'Submitting…';
     showWdrMsg('');
 
-    db.collection('users').doc(user.uid).collection('withdrawalRequests').add({
-      amount: amount,
-      accountName: name,
-      sortCode: sortDigits.replace(/(\d{2})(\d{2})(\d{2})/, '$1-$2-$3'),
-      accountNumber: account,
-      email: user.email || '',
-      status: 'pending',
-      requestedAt: firebase.firestore.FieldValue.serverTimestamp()
+    // The request and the balance deduction are written together in one transaction,
+    // so the same money can't be withdrawn twice or spent on packs as well.
+    var userRef = db.collection('users').doc(user.uid);
+    var reqRef = userRef.collection('withdrawalRequests').doc();
+
+    db.runTransaction(function (tx) {
+      return tx.get(userRef).then(function (s) {
+        var spent = s.exists ? (Number(s.data().balanceSpent) || 0) : 0;
+        var avail = Math.round((cashGross - spent) * 100) / 100;
+        if (amount > avail) {
+          throw new Error('Amount cannot be more than your balance (' + money(Math.max(0, avail)) + ').');
+        }
+        tx.set(userRef, { balanceSpent: firebase.firestore.FieldValue.increment(amount) }, { merge: true });
+        tx.set(reqRef, {
+          amount: amount,
+          accountName: name,
+          sortCode: sortDigits.replace(/(\d{2})(\d{2})(\d{2})/, '$1-$2-$3'),
+          accountNumber: account,
+          email: user.email || '',
+          status: 'pending',
+          requestedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
     })
       .then(function () {
         closeWithdraw();
@@ -1071,7 +1086,7 @@
 
     loadContact(user);
 
-    // Balance spent on packs (written by buy.html when paying with Cashed Out Balance)
+    // Balance spent on packs + withdrawals (written by buy.html and by the withdrawal form above)
     unsubscribeUser = db.collection('users').doc(user.uid).onSnapshot(function (s) {
       balanceSpent = s.exists ? (Number(s.data().balanceSpent) || 0) : 0;
       applyBalance();
