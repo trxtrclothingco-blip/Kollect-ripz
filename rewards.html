@@ -167,7 +167,75 @@
     .rw-modal-card .rw-packs { margin: 6px 0 16px; }
     .rw-modal-card .need { color: #fcd34d; font-weight: 700; font-size: .85rem; margin-bottom: 16px; }
 
-    #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1a1d27; border: 1px solid #8b5cf6; border-radius: 12px; padding: 12px 18px; z-index: 9999; display: none; max-width: 90%; text-align: center; font-weight: 600; }
+    #toast { position: fixed; left: 50%; bottom: 110px; transform: translateX(-50%); background: #1a1d27; border: 1px solid #8b5cf6; border-radius: 12px; padding: 12px 18px; z-index: 9999; display: none; max-width: 90%; text-align: center; font-weight: 600; }
+
+    /* Top bar: borderless Log in / Log out button */
+    .nav-auth {
+      margin-left: auto;
+      padding: 8px 4px;
+      background: none;
+      border: none;
+      outline: none;
+      box-shadow: none;
+      color: #cbd5e1;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .nav-auth:hover { color: #fff; }
+
+    /* Bottom tab bar */
+    body { padding-bottom: 100px; }
+    .tabbar {
+      position: fixed;
+      left: 50%;
+      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      transform: translateX(-50%);
+      width: calc(100% - 24px);
+      max-width: 460px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      align-items: center;
+      padding: 8px 6px;
+      border-radius: 28px;
+      background: rgba(24, 28, 40, 0.92);
+      border: 1px solid #2a2f3d;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 8px 28px rgba(0,0,0,.5);
+      z-index: 9000;
+    }
+    .tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 6px 0;
+      color: #9ca3af;
+      text-decoration: none;
+      font-size: 0.68rem;
+      font-weight: 600;
+    }
+    .tab svg { width: 24px; height: 24px; }
+    .tab.active { color: #22d3ee; }
+    .tab-home {
+      margin-top: -26px;
+      color: #fff;
+    }
+    .tab-home .tab-bubble {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #8b5cf6, #22d3ee);
+      border: 4px solid #0f1117;
+      box-shadow: 0 0 18px rgba(139,92,246,.5);
+    }
+    .tab-home svg { width: 28px; height: 28px; }
+    .tab-home.active { color: #fff; }
   </style>
 </head>
 <body>
@@ -175,6 +243,7 @@
   <nav class="navbar">
     <div class="nav-inner">
       <a href="index.html" class="logo">Kollect <span>Vault</span></a>
+      <button type="button" class="nav-auth" id="navAuth">Log in</button>
     </div>
   </nav>
 
@@ -263,6 +332,32 @@
   <div id="toast"></div>
   <div class="rw-modal" id="rwModal"><div class="rw-modal-card" id="rwModalCard"></div></div>
 
+  <!-- Bottom tab bar -->
+  <nav class="tabbar" id="tabbar">
+    <a href="buy.html" class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="5" width="12" height="16" rx="2"/><path d="M9 3h10a2 2 0 0 1 2 2v12"/></svg>
+      Packs
+    </a>
+    <a href="rewards.html" class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v9h14v-9M12 8v13M12 8c-2 0-4-1-4-3s3-2 4 1c1-3 4-3 4-1s-2 3-4 3z"/></svg>
+      Rewards
+    </a>
+    <a href="dashboard.html" class="tab tab-home">
+      <span class="tab-bubble">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 11l9-8 9 8v10H3z"/><path d="M10 21v-6h4v6"/></svg>
+      </span>
+      Home
+    </a>
+    <a href="collection.html" class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="11" cy="12" r="3.5"/><path d="M11 9.5v1M11 13.5v1M8.5 12h1M12.5 12h1M21 9v2M21 13v2"/></svg>
+      Vault
+    </a>
+    <a href="index.html" class="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      Pulls
+    </a>
+  </nav>
+
 <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
@@ -272,6 +367,21 @@
 <script>
 (function () {
   var db = window.Kollect.db, auth = window.Kollect.auth, FV = firebase.firestore.FieldValue;
+
+  // Highlight the active bottom tab
+  document.querySelectorAll('#tabbar .tab').forEach(function (a) {
+    if (location.pathname.endsWith(a.getAttribute('href'))) a.classList.add('active');
+  });
+
+  // Top bar Log in / Log out button
+  var navAuth = document.getElementById('navAuth');
+  navAuth.addEventListener('click', function () {
+    if (auth.currentUser) auth.signOut();
+    else window.location.href = 'auth.html';
+  });
+  auth.onAuthStateChanged(function (u) {
+    navAuth.textContent = u ? 'Log out' : 'Log in';
+  });
 
   // ============ EDIT THESE ============
   // Pack milestones: at = total packs bought. ic = badge symbol.
